@@ -1,0 +1,8 @@
+use auxiliary/scanner/postgres/postgres_login
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+set USER_FILE /usr/share/metasploit-framework/data/wordlists/postgres_default_user.txt
+set PASS_FILE /usr/share/metasploit-framework/data/wordlists/postgres_default_pass.txt
+set VERBOSE true
+set STOP_ON_SUCCESS true
+run

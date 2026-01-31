@@ -1,0 +1,140 @@
+# =============================================================================
+# Blitz Campaign — 8 Hours, Maximum Data Generation
+# Aggressive intensity, rapid phase transitions, all attack types
+# Target: 200+ attack samples across all categories
+# =============================================================================
+
+campaign:
+  name: blitz_full_spectrum_8h
+  duration_hours: 8
+  description: >
+    Maximum intensity campaign cycling through all available attack types.
+    Minimal quiet periods, rapid transitions, burst windows every 2 hours.
+
+# Aggressive intensity schedule — sustained high with burst windows
+intensity:
+  schedule:
+    - { hour: 0,   level: high }     # Hit the ground running
+    - { hour: 1,   level: burst }    # Burst: recon blitz
+    - { hour: 1.5, level: high }     # Sustain
+    - { hour: 2,   level: high }     # Web attacks
+    - { hour: 3,   level: burst }    # Burst: web blitz
+    - { hour: 3.5, level: high }     # Sustain
+    - { hour: 4,   level: high }     # Credential + exploit
+    - { hour: 5,   level: burst }    # Burst: credential spray
+    - { hour: 5.5, level: high }     # Sustain
+    - { hour: 6,   level: high }     # Evasion + exfil
+    - { hour: 7,   level: burst }    # Final burst: everything
+    - { hour: 7.5, level: high }     # Cool down
+
+# 5 phases, rapid transitions — every phase gets attacks
+phases:
+  - name: recon_blitz
+    start_hour: 0
+    end_hour: 2
+    attacks:
+      - recon_syn
+      - recon_version
+      - recon_aggressive
+      - web_dirbusting
+      - nikto_dvwa
+      - nikto_juice
+      - nikto_evasion
+      - nikto_full
+      - ssh_banner
+      - ssh_cipher_enum
+      - smb_enum
+      - dns_enum
+
+  - name: web_assault
+    start_hour: 2
+    end_hour: 4
+    attacks:
+      - web_lfi
+      - web_cmdi
+      - web_xss
+      - web_sqli
+      - juice_sqli
+      - juice_xss
+      - juice_auth_bypass
+      - juice_bola
+      - juice_file_upload
+      - nikto_dvwa
+      - nikto_juice
+      - owasp_injection
+      - owasp_auth
+      - owasp_ssrf
+      - owasp_additional
+
+  - name: credential_storm
+    start_hour: 4
+    end_hour: 6
+    attacks:
+      - cred_login
+      - cred_stuffing
+      - brute_ssh
+      - brute_ftp
+      - brute_postgres
+      - ssh_enum
+      - ssh_slow_brute
+      - db_mysql
+      - db_postgres
+      - db_credential_spray
+      - smb_brute
+      - smb_relay
+
+  - name: evasion_exfil
+    start_hour: 6
+    end_hour: 7
+    attacks:
+      - evasion_frag
+      - evasion_decoy
+      - evasion_slow
+      - evasion_encoding
+      - exfil_http
+      - exfil_dns
+      - exfil_icmp
+      - dns_tunnel
+      - dns_zone_xfer
+      - c2_beacon_http
+      - c2_beacon_dns
+      - c2_beacon_icmp
+
+  - name: full_spectrum
+    start_hour: 7
+    end_hour: 8
+    attacks:
+      - recon_syn
+      - recon_aggressive
+      - web_lfi
+      - web_cmdi
+      - juice_sqli
+      - brute_ssh
+      - brute_ftp
+      - evasion_frag
+      - evasion_decoy
+      - exfil_http
+      - exfil_dns
+      - c2_beacon_http
+      - smb_enum
+      - ssh_enum
+      - nikto_dvwa
+      - db_postgres
+      - lateral_scan
+      - lateral_cred_reuse
+
+# Timing — aggressive
+timing:
+  jitter_percent: 20
+  min_delay_seconds: 10
+
+# All available targets
+targets:
+  dvwa: { ip: "10.10.40.10", ports: [80] }
+  juice_shop: { ip: "10.10.40.10", ports: [3000] }
+  metasploitable: { ip: "10.10.40.20", ports: [21, 22, 23, 25, 80, 445, 3306, 5432, 8180] }
+  wordpress: { ip: "10.10.40.30", ports: [80] }
+  crapi: { ip: "10.10.40.31", ports: [80, 443] }
+  ftp: { ip: "10.10.40.32", ports: [21] }
+  smtp: { ip: "10.10.40.42", ports: [25] }
+  snmp: { ip: "10.10.40.43", ports: [161] }

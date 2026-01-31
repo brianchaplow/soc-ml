@@ -1,0 +1,6 @@
+use auxiliary/scanner/ssh/ssh_enumusers
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+set USER_FILE /usr/share/metasploit-framework/data/wordlists/namelist.txt
+set THREADS 4
+run

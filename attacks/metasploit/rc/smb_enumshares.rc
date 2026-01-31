@@ -1,0 +1,5 @@
+use auxiliary/scanner/smb/smb_enumshares
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+set SpiderShares true
+run

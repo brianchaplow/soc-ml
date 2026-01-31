@@ -1,0 +1,4 @@
+use auxiliary/scanner/smb/smb_enumusers
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+run

@@ -1,0 +1,256 @@
+# =============================================================================
+# SOC-ML Model Configuration
+# Author: Brian Chaplow (Chappy McNasty)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Model Selection
+# -----------------------------------------------------------------------------
+models:
+  # Primary model: XGBoost (best balance of performance and interpretability)
+  primary:
+    name: "xgboost"
+    task: "binary"  # Start with binary, then multiclass
+    
+  # Comparison models for benchmarking
+  baseline:
+    - name: "random_forest"
+    - name: "lightgbm"
+    - name: "logistic_regression"
+
+# -----------------------------------------------------------------------------
+# XGBoost Hyperparameters
+# -----------------------------------------------------------------------------
+xgboost:
+  # Binary classification
+  binary:
+    objective: "binary:logistic"
+    eval_metric: ["aucpr", "logloss"]  # PR-AUC better for imbalanced
+    
+    # Tree parameters
+    n_estimators: 500
+    max_depth: 8
+    min_child_weight: 5
+    
+    # Regularization
+    learning_rate: 0.05
+    subsample: 0.8
+    colsample_bytree: 0.8
+    reg_alpha: 0.1
+    reg_lambda: 1.0
+    
+    # Imbalance handling
+    scale_pos_weight: "auto"  # Will compute from class ratio
+    
+    # Early stopping
+    early_stopping_rounds: 50
+    
+    # GPU (if available on sear)
+    tree_method: "hist"  # Use "gpu_hist" if GPU available
+    device: "cpu"  # Change to "cuda" for GPU
+    
+    # Reproducibility
+    random_state: 42
+    
+  # Multiclass classification
+  multiclass:
+    objective: "multi:softprob"
+    eval_metric: ["mlogloss", "merror"]
+    num_class: null  # Will be set based on data
+    
+    n_estimators: 500
+    max_depth: 8
+    min_child_weight: 3
+    learning_rate: 0.05
+    subsample: 0.8
+    colsample_bytree: 0.8
+    
+    early_stopping_rounds: 50
+    tree_method: "hist"
+    random_state: 42
+
+# -----------------------------------------------------------------------------
+# Random Forest (baseline)
+# -----------------------------------------------------------------------------
+random_forest:
+  n_estimators: 300
+  max_depth: 15
+  min_samples_split: 5
+  min_samples_leaf: 2
+  class_weight: "balanced"
+  n_jobs: -1
+  random_state: 42
+
+# -----------------------------------------------------------------------------
+# LightGBM (comparison)
+# -----------------------------------------------------------------------------
+lightgbm:
+  objective: "binary"
+  metric: ["binary_logloss", "auc"]
+  n_estimators: 500
+  max_depth: 8
+  num_leaves: 64
+  learning_rate: 0.05
+  subsample: 0.8
+  colsample_bytree: 0.8
+  is_unbalance: true
+  random_state: 42
+
+# -----------------------------------------------------------------------------
+# Anomaly Detection (Unsupervised — Zero-Day Coverage)
+# -----------------------------------------------------------------------------
+anomaly_detection:
+  # Isolation Forest parameters
+  n_estimators: 300
+  max_samples: "auto"
+  max_features: 1.0
+
+  # Hybrid scoring weights
+  # hybrid_score = (1 - anomaly_weight) * supervised + anomaly_weight * anomaly
+  anomaly_weight: 0.3
+
+  # Semi-supervised self-training
+  semi_supervised:
+    confidence_threshold: 0.85  # Only auto-label above this confidence
+    max_iterations: 10
+
+# -----------------------------------------------------------------------------
+# Hyperparameter Tuning
+# -----------------------------------------------------------------------------
+tuning:
+  # Whether to perform hyperparameter search
+  enabled: false  # Start with defaults, tune later
+  
+  # Search method
+  method: "optuna"  # or "grid", "random"
+  
+  # Number of trials for Optuna
+  n_trials: 50
+  
+  # Cross-validation folds for tuning
+  cv_folds: 3
+  
+  # Optimization metric
+  optimize_metric: "average_precision"  # PR-AUC
+  
+  # Search space for XGBoost
+  xgboost_search_space:
+    n_estimators: [100, 1000]
+    max_depth: [4, 12]
+    min_child_weight: [1, 10]
+    learning_rate: [0.01, 0.3]
+    subsample: [0.6, 1.0]
+    colsample_bytree: [0.6, 1.0]
+    reg_alpha: [0, 1.0]
+    reg_lambda: [0.5, 2.0]
+
+  # Search space for LightGBM
+  lightgbm_search_space:
+    n_estimators: [100, 1000]
+    max_depth: [3, 12]
+    num_leaves: [16, 128]
+    learning_rate: [0.01, 0.3]
+    subsample: [0.6, 1.0]
+    colsample_bytree: [0.6, 1.0]
+    min_child_samples: [5, 100]
+    reg_alpha: [0.00000001, 1.0]
+    reg_lambda: [0.00000001, 1.0]
+
+# -----------------------------------------------------------------------------
+# Evaluation Metrics
+# -----------------------------------------------------------------------------
+evaluation:
+  # Primary metrics (what we optimize for)
+  primary:
+    - "average_precision"  # PR-AUC - best for imbalanced
+    - "f1_weighted"
+    
+  # Secondary metrics (for reporting)
+  secondary:
+    - "precision"
+    - "recall"
+    - "f1"
+    - "roc_auc"
+    - "accuracy"  # For reference only, not for optimization
+    
+  # Per-class metrics
+  per_class: true
+  
+  # Confusion matrix
+  confusion_matrix: true
+  
+  # Threshold optimization
+  threshold:
+    # Optimize threshold for best F1
+    optimize: true
+    # Or use fixed threshold
+    fixed: null
+    # Search range
+    range: [0.1, 0.9]
+    step: 0.01
+
+# -----------------------------------------------------------------------------
+# Interpretability
+# -----------------------------------------------------------------------------
+interpretability:
+  # SHAP analysis
+  shap:
+    enabled: true
+    # Number of samples for SHAP (full dataset is slow)
+    max_samples: 5000
+    # Plot types to generate
+    plots:
+      - "summary"
+      - "bar"
+      - "beeswarm"
+      
+  # Feature importance
+  feature_importance:
+    enabled: true
+    top_n: 20
+    
+  # Partial dependence plots
+  pdp:
+    enabled: false  # Enable later for deeper analysis
+    features: ["dest_port", "bytes_ratio", "severity"]
+
+# -----------------------------------------------------------------------------
+# Model Artifacts
+# -----------------------------------------------------------------------------
+artifacts:
+  # Where to save models
+  save_dir: "models"
+  
+  # Naming convention
+  name_template: "{model}_{task}_{timestamp}"
+  
+  # What to save
+  save:
+    - model  # Trained model (.pkl or .json)
+    - config  # Training config
+    - metrics  # Evaluation metrics
+    - features  # Feature list and importance
+    - threshold  # Optimized threshold
+    
+  # Model format for XGBoost
+  xgboost_format: "json"  # or "pkl", "ubj"
+
+# -----------------------------------------------------------------------------
+# Integration Settings
+# -----------------------------------------------------------------------------
+integration:
+  # For deployment to SOC automation
+  export:
+    # ONNX export for cross-platform deployment
+    onnx: false
+    # Pickle for Python deployment
+    pickle: true
+    
+  # Scoring thresholds for SOC actions
+  thresholds:
+    # Score >= this triggers Discord alert
+    alert_threshold: 0.8
+    # Score >= this triggers Cloudflare block consideration
+    block_threshold: 0.95
+    # Score >= this gets logged for review
+    review_threshold: 0.5

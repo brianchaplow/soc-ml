@@ -1,0 +1,15 @@
+use auxiliary/scanner/http/iis_internal_ip
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+run
+
+use auxiliary/scanner/http/webdav_scanner
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+run
+
+use auxiliary/scanner/http/dir_scanner
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+set THREADS 4
+run

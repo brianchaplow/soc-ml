@@ -1,0 +1,29 @@
+# SOC-ML Requirements
+# Environment: sear (Kali Linux)
+
+# Core ML
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+xgboost>=2.0.0
+lightgbm>=4.0.0
+shap>=0.43.0
+
+# Data Sources
+opensearch-py>=2.4.0
+pyarrow>=14.0.0
+pyyaml>=6.0
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly>=5.17.0
+
+# Jupyter
+jupyterlab>=4.0.0
+ipywidgets>=8.0.0
+
+# Utilities
+tqdm>=4.66.0
+python-dotenv>=1.0.0
+rich>=13.0.0

@@ -1,0 +1,100 @@
+# Web Application Focused 24-Hour Campaign
+# Heavy focus on web attacks, API testing, and web-based credential attacks
+
+campaign:
+  name: "web_focused_24h"
+  description: "24-hour web application attack campaign"
+  duration_hours: 24
+
+intensity:
+  schedule:
+    - { hour: 0,  level: low }
+    - { hour: 2,  level: medium }
+    - { hour: 4,  level: high }
+    - { hour: 8,  level: quiet }
+    - { hour: 9,  level: high }
+    - { hour: 14, level: burst }
+    - { hour: 15, level: medium }
+    - { hour: 18, level: high }
+    - { hour: 21, level: medium }
+    - { hour: 23, level: low }
+
+phases:
+  - name: web_recon
+    start_hour: 0
+    end_hour: 4
+    attacks:
+      - web_dirbusting
+      - juice_dirbusting
+      - nikto_dvwa
+      - nikto_juice
+      - nikto_evasion
+      - recon_version
+      - web_config_hunt
+    targets:
+      - 10.10.40.10
+      - 10.10.40.10
+
+  - name: web_exploit
+    start_hour: 4
+    end_hour: 12
+    attacks:
+      - web_lfi
+      - web_cmdi
+      - web_xss
+      - web_path_traversal
+      - web_log4shell
+      - juice_sqli
+      - juice_xss
+      - juice_auth_bypass
+      - juice_bola
+      - juice_file_upload
+      - owasp_injection
+      - owasp_ssrf
+    targets:
+      - 10.10.40.10
+      - 10.10.40.10
+
+  - name: api_attacks
+    start_hour: 12
+    end_hour: 18
+    attacks:
+      - api_bola
+      - api_bfla
+      - api_mass_assign
+      - api_jwt
+      - api_graphql
+      - wp_enum
+      - wp_brute
+      - wp_xmlrpc
+      - wp_plugin
+    targets:
+      - 10.10.40.30
+      - 10.10.40.31
+
+  - name: web_credential
+    start_hour: 18
+    end_hour: 24
+    attacks:
+      - cred_login
+      - cred_wordpress
+      - cred_xmlrpc
+      - cred_stuffing
+      - cred_enum
+      - cred_slow
+      - owasp_auth
+    targets:
+      - 10.10.40.10
+      - 10.10.40.30
+
+timing:
+  min_delay_seconds: 30
+  max_delay_seconds: 900
+  cooldown_after_burst_seconds: 180
+  jitter_percent: 25
+
+targets:
+  dvwa: { ip: "10.10.40.10", ports: [80] }
+  juice_shop: { ip: "10.10.40.10", ports: [3000] }
+  wordpress: { ip: "10.10.40.30", ports: [80, 443] }
+  crapi: { ip: "10.10.40.31", ports: [80, 443] }

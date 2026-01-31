@@ -1,0 +1,194 @@
+# Full-Spectrum 72-Hour Campaign
+# Comprehensive multi-phase attack campaign hitting all targets and techniques
+
+campaign:
+  name: "full_spectrum_72h"
+  description: "72-hour full-spectrum attack campaign across all 8 targets"
+  duration_hours: 72
+
+intensity:
+  schedule:
+    # Day 1: Ramp up
+    - { hour: 0,  level: low }        # Slow start - reconnaissance
+    - { hour: 4,  level: medium }     # Steady scanning
+    - { hour: 8,  level: high }       # Active exploitation
+    - { hour: 12, level: quiet }      # Lunch gap (benign baseline)
+    - { hour: 13, level: high }       # Resume
+    - { hour: 18, level: medium }     # Evening slowdown
+    - { hour: 22, level: low }        # Night — slow attacks
+    # Day 2: Sustained
+    - { hour: 24, level: medium }     # Morning
+    - { hour: 28, level: high }       # Full attack
+    - { hour: 32, level: burst }      # 30-min burst
+    - { hour: 33, level: medium }     # Cool down
+    - { hour: 36, level: quiet }      # Gap
+    - { hour: 37, level: high }       # Resume
+    - { hour: 42, level: medium }     # Evening
+    - { hour: 46, level: low }        # Night
+    # Day 3: Final push
+    - { hour: 48, level: medium }     # Morning
+    - { hour: 52, level: high }       # Full attack
+    - { hour: 56, level: burst }      # Intense burst
+    - { hour: 57, level: high }       # Continue
+    - { hour: 62, level: medium }     # Wind down
+    - { hour: 66, level: quiet }      # Gap
+    - { hour: 67, level: low }        # Final slow
+    - { hour: 70, level: medium }     # Wrap up
+    - { hour: 71, level: low }        # End
+
+phases:
+  - name: recon
+    start_hour: 0
+    end_hour: 8
+    attacks:
+      - recon_syn
+      - recon_full
+      - recon_udp
+      - recon_version
+      - recon_os
+      - recon_aggressive
+      - recon_slow
+      - nikto_dvwa
+      - nikto_juice
+      - web_dirbusting
+      - juice_dirbusting
+      - dns_enum
+    targets:
+      - 10.10.40.0/24
+
+  - name: web_application
+    start_hour: 8
+    end_hour: 20
+    attacks:
+      - web_lfi
+      - web_cmdi
+      - web_xss
+      - web_path_traversal
+      - web_config_hunt
+      - web_log4shell
+      - web_dirbusting
+      - nikto_dvwa
+      - nikto_evasion
+      - juice_sqli
+      - juice_xss
+      - juice_auth_bypass
+      - juice_bola
+      - juice_file_upload
+      - owasp_injection
+      - owasp_ssrf
+    targets:
+      - 10.10.40.10
+      - 10.10.40.10
+
+  - name: credential_attacks
+    start_hour: 20
+    end_hour: 32
+    attacks:
+      - cred_login
+      - cred_stuffing
+      - cred_enum
+      - cred_slow
+      - brute_ssh
+      - brute_ftp
+      - brute_telnet
+      - brute_mysql
+      - brute_postgres
+      - ssh_enum
+      - ssh_banner
+      - ssh_cipher_enum
+      - db_credential_spray
+      - owasp_auth
+    targets:
+      - 10.10.40.10
+      - 10.10.40.20
+
+  - name: exploit
+    start_hour: 32
+    end_hour: 44
+    attacks:
+      - msf_vsftpd
+      - msf_distcc
+      - msf_postgres
+      - msf_mysql
+      - msf_tomcat
+      - msf_java_rmi
+      - msf_ssh_enum
+      - msf_telnet
+      - db_mysql
+      - db_postgres
+      - smb_enum
+      - smb_brute
+    targets:
+      - 10.10.40.20
+
+  - name: network_infrastructure
+    start_hour: 44
+    end_hour: 52
+    attacks:
+      - smb_enum
+      - smb_brute
+      - smb_relay
+      - dns_zone_transfer
+      - dns_tunnel
+      - dns_enum
+      - snmp_enum
+    targets:
+      - 10.10.40.20
+      - 10.10.40.32
+
+  - name: evasion_exfil
+    start_hour: 52
+    end_hour: 60
+    attacks:
+      - evasion_frag
+      - evasion_decoy
+      - evasion_slow
+      - evasion_encoding
+      - exfil_http
+      - exfil_dns
+      - exfil_icmp
+      - c2_beacon_http
+      - c2_beacon_dns
+      - c2_jitter
+    targets:
+      - 10.10.40.0/24
+
+  - name: lateral_movement
+    start_hour: 60
+    end_hour: 68
+    attacks:
+      - lateral_scan
+      - lateral_cred_reuse
+      - lateral_pivot
+    targets:
+      - 10.10.40.0/24
+
+  - name: cleanup_round
+    start_hour: 68
+    end_hour: 72
+    attacks:
+      - recon_syn
+      - web_xss
+      - brute_ssh
+      - c2_beacon_http
+      - evasion_frag
+      - exfil_dns
+      - owasp_full
+    targets:
+      - 10.10.40.0/24
+
+timing:
+  min_delay_seconds: 30
+  max_delay_seconds: 1800
+  cooldown_after_burst_seconds: 300
+  jitter_percent: 30
+
+targets:
+  dvwa: { ip: "10.10.40.10", ports: [80] }
+  juice_shop: { ip: "10.10.40.10", ports: [3000] }
+  metasploitable: { ip: "10.10.40.20", ports: [21, 22, 23, 80, 445, 3306, 5432, 8180] }
+  windows: { ip: "10.10.40.21", ports: [80, 445, 3389, 5985] }
+  wordpress: { ip: "10.10.40.30", ports: [80, 443] }
+  crapi: { ip: "10.10.40.31", ports: [80, 443] }
+  services: { ip: "10.10.40.32", ports: [21, 25, 161] }
+  honeypot: { ip: "10.10.40.33", ports: [80, 8080] }

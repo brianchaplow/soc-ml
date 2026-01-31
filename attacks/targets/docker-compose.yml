@@ -1,0 +1,203 @@
+# =============================================================================
+# Purple Team Target VMs — Docker Compose
+# Deploy on a host with VLAN 40 access
+#
+# Usage:
+#   cp .env.example .env   # edit PARENT_IFACE for your host
+#   docker compose up -d
+#   docker compose ps      # verify all healthy
+#
+# Author: Brian Chaplow (Chappy McNasty)
+# =============================================================================
+
+networks:
+  vlan40:
+    driver: macvlan
+    driver_opts:
+      parent: ${PARENT_IFACE:-eth0}
+    ipam:
+      config:
+        - subnet: ${SUBNET:-10.10.40.0/24}
+          gateway: ${GATEWAY:-10.10.40.1}
+
+# =============================================================================
+# WordPress Stack — 10.10.40.30
+# Ports: 80 (WordPress), 3306 (MySQL — internal only)
+# Attacks: WPScan, XML-RPC, plugin exploits, wp-login brute force
+# =============================================================================
+services:
+  wordpress-db:
+    image: mysql:5.7
+    container_name: target-wp-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${WP_DB_PASSWORD:-vulnerable123}
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wpuser
+      MYSQL_PASSWORD: ${WP_DB_PASSWORD:-vulnerable123}
+    volumes:
+      - wp_db_data:/var/lib/mysql
+    networks:
+      vlan40:
+        ipv4_address: 10.10.40.39  # internal, not a target
+    restart: unless-stopped
+
+  wordpress:
+    image: wordpress:6.4-php8.1-apache
+    container_name: target-wordpress
+    depends_on:
+      - wordpress-db
+    environment:
+      WORDPRESS_DB_HOST: wordpress-db
+      WORDPRESS_DB_USER: wpuser
+      WORDPRESS_DB_PASSWORD: ${WP_DB_PASSWORD:-vulnerable123}
+      WORDPRESS_DB_NAME: wordpress
+    volumes:
+      - wp_data:/var/www/html
+    networks:
+      vlan40:
+        ipv4_address: ${WORDPRESS_IP:-10.10.40.30}
+    restart: unless-stopped
+
+  # ============================================================================
+  # crAPI (OWASP) — 10.10.40.31
+  # Ports: 80 (HTTP), 443 (HTTPS) — nginx proxies to internal API services
+  # Attacks: BOLA, BFLA, mass assignment, JWT manipulation, GraphQL
+  # ============================================================================
+  crapi-web:
+    image: crapi/crapi:latest
+    container_name: target-crapi
+    environment:
+      - DB_HOST=crapi-db
+      - DB_PORT=5432
+      - DB_USER=admin
+      - DB_PASSWORD=crapisecretpassword
+      - DB_NAME=crapi
+      - MONGO_DB_HOST=crapi-mongo
+      - MONGO_DB_PORT=27017
+      - MONGO_DB_USER=admin
+      - MONGO_DB_PASSWORD=crapisecretpassword
+      - MONGO_DB_NAME=crapi
+      - SERVER_PORT=8080
+      - MAILHOG_HOST=crapi-mailhog
+      - MAILHOG_PORT=1025
+      - MAILHOG_DOMAIN=example.com
+      - JWT_SECRET=crapi-jwt-secret-key-for-testing
+    networks:
+      vlan40:
+        ipv4_address: ${CRAPI_IP:-10.10.40.31}
+    restart: unless-stopped
+    depends_on:
+      - crapi-db
+      - crapi-mongo
+      - crapi-mailhog
+
+  crapi-db:
+    image: postgres:14
+    container_name: target-crapi-db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: crapisecretpassword
+      POSTGRES_DB: crapi
+    volumes:
+      - crapi_pg_data:/var/lib/postgresql/data
+    networks:
+      vlan40:
+        ipv4_address: 10.10.40.35  # internal
+    restart: unless-stopped
+
+  crapi-mongo:
+    image: mongo:5.0
+    container_name: target-crapi-mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: crapisecretpassword
+    volumes:
+      - crapi_mongo_data:/data/db
+    networks:
+      vlan40:
+        ipv4_address: 10.10.40.36  # internal
+    restart: unless-stopped
+
+  crapi-mailhog:
+    image: mailhog/mailhog:latest
+    container_name: target-crapi-mail
+    networks:
+      vlan40:
+        ipv4_address: 10.10.40.37  # internal
+    restart: unless-stopped
+
+  # ============================================================================
+  # Vulnerable Services — 10.10.40.32
+  # Ports: 21 (FTP), 25 (SMTP), 69/udp (TFTP), 161/udp (SNMP)
+  # Attacks: FTP backdoor, SMTP relay, SNMP enum, TFTP
+  # ============================================================================
+  vuln-ftp:
+    image: fauria/vsftpd
+    container_name: target-ftp
+    environment:
+      FTP_USER: ${FTP_USER:-ftpuser}
+      FTP_PASS: ${FTP_PASS:-ftppass123}
+      PASV_ENABLE: "YES"
+      PASV_MIN_PORT: "21100"
+      PASV_MAX_PORT: "21110"
+      PASV_ADDRESS: ${SERVICES_IP:-10.10.40.32}
+      LOCAL_UMASK: "022"
+    networks:
+      vlan40:
+        ipv4_address: ${SERVICES_IP:-10.10.40.32}
+    restart: unless-stopped
+
+  vuln-smtp:
+    image: namshi/smtp
+    container_name: target-smtp
+    environment:
+      RELAY_NETWORKS: ":10.10.0.0/16"
+      DISABLE_IPV6: "true"
+    networks:
+      vlan40:
+        ipv4_address: 10.10.40.42  # SMTP on separate IP
+    restart: unless-stopped
+
+  vuln-snmp:
+    image: polinux/snmpd
+    container_name: target-snmp
+    environment:
+      SNMP_COMMUNITY: "public"
+    networks:
+      vlan40:
+        ipv4_address: 10.10.40.43  # SNMP on separate IP
+    restart: unless-stopped
+
+  # ============================================================================
+  # WAF + Honeypot Emulator — 10.10.40.33
+  # ModSecurity WAF + multi-port service emulator
+  # Attacks: WAF evasion, probe detection, lateral movement patterns
+  # ============================================================================
+  waf-target:
+    image: owasp/modsecurity-crs:nginx-alpine
+    container_name: target-waf
+    environment:
+      - MODSEC_RULE_ENGINE=DetectionOnly
+      - ANOMALY_INBOUND=5
+      - ANOMALY_OUTBOUND=4
+      - BACKEND=http://waf-backend:8080
+    networks:
+      vlan40:
+        ipv4_address: ${HONEYPOT_IP:-10.10.40.33}
+    restart: unless-stopped
+    depends_on:
+      - waf-backend
+
+  waf-backend:
+    image: httpd:2.4-alpine
+    container_name: target-waf-backend
+    networks:
+      vlan40:
+        ipv4_address: 10.10.40.44  # internal
+    restart: unless-stopped
+
+volumes:
+  wp_db_data:
+  wp_data:
+  crapi_pg_data:
+  crapi_mongo_data:

@@ -1,0 +1,46 @@
+# =============================================================================
+# SOC-ML OpenSearch Configuration
+# Author: Brian Chaplow (Chappy McNasty)
+# =============================================================================
+
+connection:
+  host: ${OPENSEARCH_HOST:10.10.20.10}
+  port: ${OPENSEARCH_PORT:9200}
+  user: ${OPENSEARCH_USER:admin}
+  password: ${OPENSEARCH_PASS}
+  use_ssl: true
+  verify_certs: false
+  ssl_show_warn: false
+  timeout: 60
+
+indices:
+  # Primary alert index
+  alerts: "fluentbit-default"
+  
+  # Web application logs (enriched)
+  apache: "apache-parsed-v2"
+  
+  # Windows endpoint telemetry
+  windows: "winlog-*"
+  
+  # Honeypot data
+  honeypot: "honeypot-credentials"
+
+# Query settings
+query:
+  # Maximum records per scroll batch
+  scroll_size: 10000
+  
+  # Scroll context timeout
+  scroll_timeout: "5m"
+  
+  # Maximum total records to pull (safety limit)
+  max_records: 1000000
+
+# Date range for training data
+date_range:
+  # Use temporal split: train on earlier data, test on later
+  train_start: "2025-12-03"
+  train_end: "2026-01-27"
+  test_start: "2026-01-28"
+  test_end: "2026-02-28"

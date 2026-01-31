@@ -1,0 +1,5 @@
+use auxiliary/scanner/smb/smb_ms17_010
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+set CHECK_DOPU true
+run

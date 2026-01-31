@@ -1,0 +1,28 @@
+# WordPress/Web Application Usernames
+# Based on real attack patterns observed on brianchaplow.com
+admin
+administrator
+brian
+brianchaplow
+chaplow
+root
+webmaster
+user
+test
+demo
+wordpress
+wp
+manager
+editor
+author
+support
+info
+contact
+www
+web
+backup
+dev
+developer
+staging
+prod
+api

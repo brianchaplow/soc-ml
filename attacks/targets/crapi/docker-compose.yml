@@ -1,0 +1,188 @@
+# crAPI (OWASP) — 10.10.40.31
+# Ports: 80 (HTTP), 443 (HTTPS)
+# Attacks: BOLA, BFLA, mass assignment, JWT manipulation
+
+networks:
+  vlan40:
+    external: true
+  crapi-internal:
+    driver: bridge
+
+services:
+  postgresdb:
+    image: postgres:14
+    container_name: crapi-postgres
+    privileged: true
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: crapisecretpassword
+      POSTGRES_DB: crapi
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - crapi-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d crapi"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb:
+    image: mongo:4.4
+    container_name: crapi-mongo
+    privileged: true
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: crapisecretpassword
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - crapi-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: crapi-mailhog
+    networks:
+      - crapi-internal
+    restart: unless-stopped
+
+  crapi-identity:
+    image: crapi/crapi-identity:latest
+    container_name: crapi-identity
+    privileged: true
+    depends_on:
+      postgresdb:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    environment:
+      LOG_LEVEL: INFO
+      DB_NAME: crapi
+      DB_USER: admin
+      DB_PASSWORD: crapisecretpassword
+      DB_HOST: crapi-postgres
+      DB_PORT: 5432
+      SERVER_PORT: 8080
+      ENABLE_SHELL_INJECTION: "true"
+      JWT_SECRET: crapi-jwt-secret-key
+      JWT_EXPIRATION: 604800000
+      MAILHOG_HOST: crapi-mailhog
+      MAILHOG_PORT: 1025
+      MAILHOG_DOMAIN: example.com
+      SMTP_HOST: smtp.example.com
+      SMTP_PORT: 587
+      SMTP_EMAIL: user@example.com
+      SMTP_PASS: xxxxxxxxxxxxxx
+      SMTP_FROM: no-reply@example.com
+      SMTP_AUTH: "true"
+      SMTP_STARTTLS: "true"
+      ENABLE_LOG4J: "true"
+      API_GATEWAY_URL: https://api.mypremiumdealership.com
+      TLS_ENABLED: "false"
+      TLS_KEYSTORE_TYPE: PKCS12
+      TLS_KEYSTORE: classpath:certs/server.p12
+      TLS_KEYSTORE_PASSWORD: passw0rd
+      TLS_KEY_PASSWORD: passw0rd
+      TLS_KEY_ALIAS: identity
+    networks:
+      - crapi-internal
+    restart: unless-stopped
+
+  crapi-community:
+    image: crapi/crapi-community:latest
+    container_name: crapi-community
+    privileged: true
+    depends_on:
+      postgresdb:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      crapi-identity:
+        condition: service_started
+    environment:
+      LOG_LEVEL: INFO
+      IDENTITY_SERVICE: crapi-identity:8080
+      DB_NAME: crapi
+      DB_USER: admin
+      DB_PASSWORD: crapisecretpassword
+      DB_HOST: crapi-postgres
+      DB_PORT: 5432
+      SERVER_PORT: 8087
+      MONGO_DB_HOST: crapi-mongo
+      MONGO_DB_PORT: 27017
+      MONGO_DB_USER: admin
+      MONGO_DB_PASSWORD: crapisecretpassword
+      MONGO_DB_NAME: crapi
+      TLS_ENABLED: "false"
+      TLS_CERTIFICATE: certs/server.crt
+      TLS_KEY: certs/server.key
+    networks:
+      - crapi-internal
+    restart: unless-stopped
+
+  crapi-workshop:
+    image: crapi/crapi-workshop:latest
+    container_name: crapi-workshop
+    privileged: true
+    depends_on:
+      postgresdb:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      crapi-identity:
+        condition: service_started
+    environment:
+      LOG_LEVEL: INFO
+      IDENTITY_SERVICE: crapi-identity:8080
+      DB_NAME: crapi
+      DB_USER: admin
+      DB_PASSWORD: crapisecretpassword
+      DB_HOST: crapi-postgres
+      DB_PORT: 5432
+      SERVER_PORT: 8000
+      MONGO_DB_HOST: crapi-mongo
+      MONGO_DB_PORT: 27017
+      MONGO_DB_USER: admin
+      MONGO_DB_PASSWORD: crapisecretpassword
+      MONGO_DB_NAME: crapi
+      SECRET_KEY: crapi-secret-key
+      API_GATEWAY_URL: https://api.mypremiumdealership.com
+      TLS_ENABLED: "false"
+      TLS_CERTIFICATE: certs/server.crt
+      TLS_KEY: certs/server.key
+      FILES_LIMIT: 1000
+    networks:
+      - crapi-internal
+    restart: unless-stopped
+
+  crapi-web:
+    image: crapi/crapi-web:latest
+    container_name: crapi-web
+    privileged: true
+    depends_on:
+      - crapi-identity
+      - crapi-community
+      - crapi-workshop
+    environment:
+      COMMUNITY_SERVICE: crapi-community:8087
+      IDENTITY_SERVICE: crapi-identity:8080
+      WORKSHOP_SERVICE: crapi-workshop:8000
+      CHATBOT_SERVICE: crapi-identity:8080
+      MAILHOG_WEB_SERVICE: crapi-mailhog:8025
+      TLS_ENABLED: "false"
+    networks:
+      vlan40:
+        ipv4_address: 10.10.40.31
+      crapi-internal:
+    restart: unless-stopped
+
+volumes:
+  pg_data:
+  mongo_data:

@@ -1,0 +1,352 @@
+# =============================================================================
+# SOC-ML Feature Engineering Configuration
+# Author: Brian Chaplow (Chappy McNasty)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Label Definitions
+# -----------------------------------------------------------------------------
+labels:
+  # Binary classification: is this interesting or noise?
+  binary:
+    noise:
+      # Protocol anomalies (not security threats)
+      signatures:
+        - "SURICATA Ethertype unknown"
+        - "SURICATA STREAM 3way handshake excessive different SYNs"
+        - "SURICATA STREAM 3way handshake SYN resend different seq on SYN recv"
+        - "SURICATA STREAM 3way handshake SYNACK resend with different ack"
+        - "SURICATA STREAM 3way handshake SYNACK with wrong ack"
+        - "SURICATA STREAM 3way handshake wrong seq wrong ack"
+        - "SURICATA STREAM Packet with invalid ack"
+        - "SURICATA STREAM SHUTDOWN RST invalid ack"
+        - "SURICATA STREAM ESTABLISHED SYN resend with different seq"
+        - "SURICATA STREAM ESTABLISHED SYNACK resend with different ACK"
+        - "SURICATA STREAM CLOSEWAIT FIN out of window"
+        - "SURICATA STREAM FIN out of window"
+        - "SURICATA STREAM FIN invalid ack"
+        - "SURICATA STREAM ESTABLISHED invalid ack"
+        - "SURICATA STREAM ESTABLISHED packet out of window"
+        - "SURICATA STREAM excessive retransmissions"
+        - "SURICATA STREAM Packet with invalid timestamp"
+        - "SURICATA STREAM pkt seen on wrong thread"
+        - "SURICATA STREAM bad window update"
+        - "SURICATA STREAM suspected RST injection"
+        - "SURICATA STREAM reassembly overlap with different data"
+        - "SURICATA STREAM TIMEWAIT ACK with wrong seq"
+        - "SURICATA STREAM ESTABLISHED SYNACK resend with different seq"
+        - "SURICATA HTTP unable to match response to request"
+        - "SURICATA HTTP Request unrecognized authorization method"
+        - "SURICATA HTTP Response excessive header repetition"
+        - "SURICATA HTTP invalid response chunk len"
+        - "SURICATA HTTP too many warnings"
+        - "SURICATA HTTP Request line incomplete"
+        - "SURICATA HTTP request field missing colon"
+        - "SURICATA HTTP request missing protocol"
+        - "SURICATA HTTP Host header ambiguous"
+        - "SURICATA Applayer Detect protocol only one direction"
+        - "SURICATA Applayer Mismatch protocol both directions"
+        - "SURICATA Applayer Wrong direction first Data"
+        - "SURICATA UDPv4 invalid checksum"
+        - "SURICATA ICMPv4 unknown code"
+        - "SURICATA SMB file overlap"
+        - "SURICATA TLS invalid record type"
+        - "SURICATA QUIC failed decrypt"
+      categories:
+        - "Generic Protocol Command Decode"
+        
+    info:
+      # Informational alerts (not threats, but interesting)
+      signature_patterns:
+        - "ET INFO"
+        - "ET USER_AGENTS"
+        - "ET FILE_SHARING"
+        - "ET DYN_DNS"
+        - "ET DNS Query"
+      categories:
+        - "Misc activity"
+        - "Not Suspicious Traffic"
+        - "Device Retrieving External IP Address Detected"
+        - "Potential Corporate Privacy Violation"
+        
+    attack:
+      # Actual security threats
+      signature_patterns:
+        - "HOMELAB"  # Your custom attack rules
+        - "ET EXPLOIT"
+        - "ET WEB_SERVER"
+        - "ET SCAN"
+        - "ET TOR"
+        - "GPL ATTACK"
+        - "ET POLICY"
+        - "ET TROJAN"
+        - "ET SHELLCODE"
+        - "GPL SHELLCODE"
+        - "ET MALWARE"
+        - "ET DNS"
+        - "GPL SNMP"
+        - "ET NETBIOS"
+        - "GPL NETBIOS"
+        - "ET RPC"
+        - "ET FTP"
+        - "ET SMTP"
+      categories:
+        - "Web Application Attack"
+        - "Attempted Denial of Service"
+        - "Attempted Administrator Privilege Gain"
+        - "Attempted User Privilege Gain"
+        - "Successful Credential Theft Detected"
+        - "Detection of a Network Scan"
+        - "Misc Attack"
+        - "Potentially Bad Traffic"
+        - "A Network Trojan was detected"
+        - "Decode of an RPC Query"
+        - "Executable code was detected"
+
+  # Multiclass: specific attack types
+  attack_types:
+    sql_injection:
+      signatures:
+        - "HOMELAB SQLmap Tool Detected"
+        - "HOMELAB SQL Injection - OR boolean"
+        - "HOMELAB SQL Injection - Time-based SLEEP"
+        - "HOMELAB SQL Injection - UNION SELECT"
+        - "HOMELAB SQL Injection - INFORMATION_SCHEMA access"
+        - "HOMELAB SQL Injection - Comment evasion"
+        
+    xss:
+      signatures:
+        - "HOMELAB XSS - Script tag in URI"
+        
+    command_injection:
+      signatures:
+        - "HOMELAB Command Injection - Pipe character"
+        
+    directory_traversal:
+      signatures:
+        - "HOMELAB Directory Traversal - dot dot slash"
+        - "ET EXPLOIT Cisco ASA and Firepower Path Traversal"
+        
+    dos:
+      signatures:
+        - "ET DOS Possible SSDP Amplification Scan in Progress"
+      categories:
+        - "Attempted Denial of Service"
+        
+    reconnaissance:
+      signatures:
+        - "ET SCAN Possible Nmap User-Agent Observed"
+      categories:
+        - "Detection of a Network Scan"
+        
+    exploit:
+      signature_patterns:
+        - "ET EXPLOIT"
+        - "GPL ATTACK"
+      categories:
+        - "Attempted Administrator Privilege Gain"
+        - "Attempted User Privilege Gain"
+        
+    credential_theft:
+      categories:
+        - "Successful Credential Theft Detected"
+
+    smb_attack:
+      signature_patterns:
+        - "ET NETBIOS"
+        - "GPL NETBIOS"
+      categories:
+        - "Decode of an RPC Query"
+
+    snmp_enumeration:
+      signature_patterns:
+        - "GPL SNMP"
+
+    dns_attack:
+      signature_patterns:
+        - "ET DNS"
+
+    brute_force:
+      signature_patterns:
+        - "ET SCAN"
+      categories:
+        - "Successful Credential Theft Detected"
+
+    data_exfiltration:
+      signature_patterns:
+        - "ET POLICY"
+        - "ET TROJAN"
+
+    evasion:
+      signature_patterns:
+        - "ET SHELLCODE"
+        - "GPL SHELLCODE"
+
+    api_attack:
+      signature_patterns:
+        - "ET WEB_SERVER"
+
+    lateral_movement:
+      signature_patterns:
+        - "ET SCAN"
+        - "ET POLICY"
+
+    c2_communication:
+      signature_patterns:
+        - "ET TROJAN"
+        - "ET MALWARE"
+      categories:
+        - "A Network Trojan was detected"
+
+# -----------------------------------------------------------------------------
+# Feature Definitions
+# -----------------------------------------------------------------------------
+features:
+  # Network features (from alert/flow records)
+  network:
+    - name: src_port
+      type: numeric
+      description: Source port number
+      
+    - name: dest_port
+      type: numeric
+      description: Destination port number
+      
+    - name: proto
+      type: categorical
+      description: Protocol (TCP/UDP/ICMP)
+      encoding: onehot
+      
+    - name: vlan
+      type: categorical
+      description: VLAN ID
+      encoding: onehot
+      
+    - name: direction
+      type: categorical
+      description: Flow direction
+      encoding: onehot
+
+  # Flow statistics (when available)
+  flow:
+    - name: bytes_toserver
+      type: numeric
+      description: Bytes sent to server
+      default: 0
+      
+    - name: bytes_toclient
+      type: numeric
+      description: Bytes sent to client
+      default: 0
+      
+    - name: pkts_toserver
+      type: numeric
+      description: Packets sent to server
+      default: 0
+      
+    - name: pkts_toclient
+      type: numeric
+      description: Packets sent to client
+      default: 0
+
+  # Derived features (computed)
+  derived:
+    - name: bytes_total
+      formula: "bytes_toserver + bytes_toclient"
+      
+    - name: pkts_total
+      formula: "pkts_toserver + pkts_toclient"
+      
+    - name: bytes_ratio
+      formula: "bytes_toserver / (bytes_toclient + 1)"
+      description: Asymmetry ratio (high = upload heavy)
+      
+    - name: pkts_ratio
+      formula: "pkts_toserver / (pkts_toclient + 1)"
+      
+    - name: avg_pkt_size_toserver
+      formula: "bytes_toserver / (pkts_toserver + 1)"
+      
+    - name: avg_pkt_size_toclient
+      formula: "bytes_toclient / (pkts_toclient + 1)"
+      
+    - name: is_privileged_src_port
+      formula: "src_port < 1024"
+      type: boolean
+      
+    - name: is_privileged_dest_port
+      formula: "dest_port < 1024"
+      type: boolean
+      
+    - name: is_ephemeral_src_port
+      formula: "src_port >= 49152"
+      type: boolean
+      
+    - name: is_internal_src
+      formula: "src_ip.startswith('10.10.')"
+      type: boolean
+      
+    - name: is_internal_dest
+      formula: "dest_ip.startswith('10.10.')"
+      type: boolean
+
+  # Alert metadata features
+  alert:
+    - name: severity
+      type: numeric
+      description: Suricata severity (1-3)
+      
+    - name: signature_id
+      type: numeric
+      description: Rule SID (can indicate rule family)
+
+  # Well-known ports for categorical encoding
+  port_categories:
+    web: [80, 443, 3000, 8080, 8443, 8888]
+    ssh: [22]
+    dns: [53]
+    mail: [25, 465, 587, 993, 995]
+    database: [3306, 5432, 1433, 27017, 6379]
+    smb: [445, 139]
+    rdp: [3389]
+    snmp: [161, 162]
+    ftp: [21]
+    rmi: [1099]
+    tomcat: [8180]
+    winrm: [5985, 5986]
+    proxmox: [8006]  # Your Proxmox UI
+    opensearch: [9200, 5601]
+
+# -----------------------------------------------------------------------------
+# Sampling Strategy
+# -----------------------------------------------------------------------------
+sampling:
+  # For training, balance classes using stratified sampling
+  strategy: "stratified"
+  
+  # Target samples per class (will undersample majority, oversample minority)
+  target_samples:
+    noise: 50000      # Undersample from 12M
+    info: 20000       # Undersample from 772K
+    attack: null      # Use all available (~2500)
+    benign: 100000    # Sample from flow records
+    
+  # Minimum samples required for a class to be included
+  min_samples: 10
+  
+  # Random seed for reproducibility
+  random_state: 42
+
+# -----------------------------------------------------------------------------
+# Train/Test Split
+# -----------------------------------------------------------------------------
+split:
+  # Use temporal split (not random!) for realistic evaluation
+  method: "temporal"
+  
+  # Train on data before this date, test on data after
+  split_date: "2026-01-16"
+  
+  # Alternatively, for cross-validation:
+  cv_folds: 5
+  cv_strategy: "stratified"

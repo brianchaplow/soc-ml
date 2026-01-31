@@ -1,0 +1,98 @@
+# Network/Infrastructure Focused 24-Hour Campaign
+# Heavy focus on network scanning, service exploitation, SMB, SNMP, DNS
+
+campaign:
+  name: "network_focused_24h"
+  description: "24-hour network infrastructure attack campaign"
+  duration_hours: 24
+
+intensity:
+  schedule:
+    - { hour: 0,  level: low }
+    - { hour: 2,  level: medium }
+    - { hour: 6,  level: high }
+    - { hour: 10, level: quiet }
+    - { hour: 11, level: high }
+    - { hour: 16, level: burst }
+    - { hour: 17, level: medium }
+    - { hour: 20, level: high }
+    - { hour: 23, level: low }
+
+phases:
+  - name: network_recon
+    start_hour: 0
+    end_hour: 6
+    attacks:
+      - recon_syn
+      - recon_full
+      - recon_udp
+      - recon_version
+      - recon_os
+      - recon_aggressive
+      - recon_slow
+      - dns_enum
+    targets:
+      - 10.10.40.0/24
+
+  - name: service_exploit
+    start_hour: 6
+    end_hour: 12
+    attacks:
+      - brute_ssh
+      - brute_ftp
+      - brute_telnet
+      - brute_mysql
+      - brute_postgres
+      - db_mysql
+      - db_postgres
+      - db_credential_spray
+      - ssh_enum
+      - ssh_banner
+      - ssh_cipher_enum
+    targets:
+      - 10.10.40.20
+
+  - name: smb_dns
+    start_hour: 12
+    end_hour: 18
+    attacks:
+      - smb_enum
+      - smb_brute
+      - smb_relay
+      - dns_zone_transfer
+      - dns_tunnel
+      - dns_enum
+      - snmp_enum
+      - win_smb_ms17
+      - msf_smb_shares
+      - msf_smb_users
+    targets:
+      - 10.10.40.20
+      - 10.10.40.21
+      - 10.10.40.32
+
+  - name: lateral_exfil
+    start_hour: 18
+    end_hour: 24
+    attacks:
+      - lateral_scan
+      - lateral_cred_reuse
+      - lateral_pivot
+      - exfil_icmp
+      - exfil_dns
+      - c2_beacon_dns
+      - evasion_frag
+      - evasion_decoy
+    targets:
+      - 10.10.40.0/24
+
+timing:
+  min_delay_seconds: 30
+  max_delay_seconds: 1200
+  cooldown_after_burst_seconds: 300
+  jitter_percent: 30
+
+targets:
+  metasploitable: { ip: "10.10.40.20", ports: [21, 22, 23, 80, 139, 445, 3306, 5432] }
+  windows: { ip: "10.10.40.21", ports: [80, 445, 3389, 5985] }
+  services: { ip: "10.10.40.32", ports: [21, 25, 69, 161] }

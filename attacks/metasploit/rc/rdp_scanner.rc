@@ -1,0 +1,9 @@
+use auxiliary/scanner/rdp/rdp_scanner
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+run
+
+use auxiliary/scanner/rdp/cve_2019_0708_bluekeep
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+run

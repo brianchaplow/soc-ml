@@ -1,0 +1,14 @@
+admin
+root
+msfadmin
+user
+test
+guest
+administrator
+postgres
+mysql
+ftp
+www-data
+nobody
+operator
+backup

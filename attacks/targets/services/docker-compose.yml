@@ -1,0 +1,46 @@
+# Vulnerable Services Stack — 10.10.40.32
+# Ports: 21 (FTP), 25 (SMTP), 161/udp (SNMP)
+# Attacks: FTP brute/backdoor, SMTP relay, SNMP enum
+
+networks:
+  vlan40:
+    external: true
+
+services:
+  ftp:
+    image: fauria/vsftpd
+    container_name: target-ftp
+    privileged: true
+    environment:
+      FTP_USER: ftpuser
+      FTP_PASS: ftppass123
+      PASV_ENABLE: "YES"
+      PASV_MIN_PORT: "21100"
+      PASV_MAX_PORT: "21110"
+      PASV_ADDRESS: "10.10.40.32"
+      LOCAL_UMASK: "022"
+    networks:
+      vlan40:
+        ipv4_address: 10.10.40.32
+    restart: unless-stopped
+
+  smtp:
+    image: namshi/smtp
+    container_name: target-smtp
+    environment:
+      RELAY_NETWORKS: ":10.10.0.0/16"
+      DISABLE_IPV6: "true"
+    networks:
+      vlan40:
+        ipv4_address: 10.10.40.42
+    restart: unless-stopped
+
+  snmp:
+    image: polinux/snmpd
+    container_name: target-snmp
+    environment:
+      SNMP_COMMUNITY: "public"
+    networks:
+      vlan40:
+        ipv4_address: 10.10.40.43
+    restart: unless-stopped

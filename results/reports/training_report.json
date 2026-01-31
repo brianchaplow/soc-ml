@@ -1,0 +1,58 @@
+{
+  "model": "XGBoost Binary Classifier",
+  "task": "Threat Detection",
+  "training_date": "20260127_120522",
+  "data": {
+    "train_samples": 153490,
+    "test_samples": 120843,
+    "n_features": 59
+  },
+  "metrics": {
+    "pr_auc": 0.6222715652305659,
+    "roc_auc": 0.9969607700672203,
+    "accuracy": 0.9947038719661048,
+    "threshold": 0.1
+  },
+  "top_features": [
+    {
+      "feature": "avg_pkt_size_toserver",
+      "importance": 0.5757067799568176
+    },
+    {
+      "feature": "avg_pkt_size_total",
+      "importance": 0.2484721839427948
+    },
+    {
+      "feature": "proto_encoded",
+      "importance": 0.08975514024496078
+    },
+    {
+      "feature": "bytes_toserver",
+      "importance": 0.01992964930832386
+    },
+    {
+      "feature": "pkts_toserver",
+      "importance": 0.014589479193091393
+    },
+    {
+      "feature": "is_internal_traffic",
+      "importance": 0.013156840577721596
+    },
+    {
+      "feature": "bytes_total",
+      "importance": 0.012455728836357594
+    },
+    {
+      "feature": "bytes_total_log",
+      "importance": 0.01162952370941639
+    },
+    {
+      "feature": "proto_is_udp",
+      "importance": 0.009540710598230362
+    },
+    {
+      "feature": "dest_port",
+      "importance": 0.001742635853588581
+    }
+  ]
+}
