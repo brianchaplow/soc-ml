@@ -1,0 +1,9 @@
+use auxiliary/scanner/http/glassfish_traversal
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+run
+
+use auxiliary/scanner/http/glassfish_login
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+run

@@ -39,6 +39,13 @@ SERVICES_FTP_IP="${SERVICES_FTP_IP:-10.10.40.32}"
 SERVICES_SMTP_IP="${SERVICES_SMTP_IP:-10.10.40.42}"
 SERVICES_SNMP_IP="${SERVICES_SNMP_IP:-10.10.40.43}"
 HONEYPOT_IP="${HONEYPOT_IP:-10.10.40.33}"
+HONEYPOT_HTTP_PORT="${HONEYPOT_HTTP_PORT:-8080}"
+
+# AD Lab targets (VLAN 30 — restricted scope)
+AD_DC_IP="${AD_DC_IP:-10.10.30.40}"
+AD_WS_IP="${AD_WS_IP:-10.10.30.41}"
+AD_DOMAIN="${AD_DOMAIN:-lab.local}"
+
 TARGET_SUBNET="10.10.40.0/24"
 
 # Automation flags
@@ -196,12 +203,46 @@ list_attacks() {
     echo "  wp_plugin           - Plugin vulnerability scanning"
     echo "  wp_full             - All WordPress attacks"
     echo ""
-    echo -e "${YELLOW}Windows Attacks:${NC}"
+    echo -e "${YELLOW}Windows Attacks (MS3):${NC}"
     echo "  win_rdp_brute       - RDP brute force"
     echo "  win_iis_scan        - IIS vulnerability scanning"
     echo "  win_winrm           - WinRM enumeration"
     echo "  win_smb_ms17        - EternalBlue scanning"
     echo "  win_full            - All Windows attacks"
+    echo ""
+    echo -e "${YELLOW}Windows MS3 Expanded:${NC}"
+    echo "  win_ftp_brute       - FTP brute force (port 21)"
+    echo "  win_ssh_brute       - SSH brute force (port 22)"
+    echo "  win_mysql_attack    - MySQL exploitation (port 3306)"
+    echo "  win_glassfish       - GlassFish admin/traversal (port 4848/8080)"
+    echo "  win_struts          - Apache Struts RCE (port 8282)"
+    echo "  win_jenkins         - Jenkins script console (port 8484)"
+    echo "  win_wamp            - WAMP/phpMyAdmin (port 8585)"
+    echo "  win_elasticsearch   - Elasticsearch RCE (port 9200)"
+    echo "  win_manageengine    - ManageEngine exploitation (port 8020)"
+    echo ""
+    echo -e "${YELLOW}WAF/Honeypot Attacks:${NC}"
+    echo "  waf_sqli_bypass     - SQLi CRS bypass payloads"
+    echo "  waf_xss_bypass      - XSS CRS bypass payloads"
+    echo "  waf_path_bypass     - Path traversal CRS bypass"
+    echo "  waf_rce_bypass      - RCE/command injection bypass"
+    echo "  waf_protocol_abuse  - HTTP smuggling/verb tampering"
+    echo "  waf_scanner_evasion - Nikto evasion + UA rotation"
+    echo "  waf_rate_flood      - Rate-based anomaly threshold"
+    echo "  waf_fingerprint     - WAF technology detection"
+    echo "  waf_full            - All WAF evasion attacks"
+    echo ""
+    echo -e "${RED}Active Directory (VLAN 30 — RESTRICTED):${NC}"
+    echo "  ad_ldap_enum        - LDAP anonymous bind + enumeration"
+    echo "  ad_kerb_enum        - Kerberos user enumeration"
+    echo "  ad_kerberoast       - Kerberoasting (TGS ticket extraction)"
+    echo "  ad_asrep_roast      - AS-REP roasting"
+    echo "  ad_password_spray   - Password spray (5 passwords, 30s cooldown)"
+    echo "  ad_bloodhound       - BloodHound collection"
+    echo "  ad_dcsync           - DCSync hash extraction (requires DA)"
+    echo "  ad_lateral_pth      - Pass-the-Hash lateral movement"
+    echo "  ad_zerologon        - CVE-2020-1472 CHECK only"
+    echo "  ad_full             - Full AD attack chain"
     echo ""
     echo -e "${YELLOW}Lateral Movement:${NC}"
     echo "  lateral_scan        - Sequential multi-host scanning"
@@ -229,6 +270,14 @@ list_attacks() {
     echo "  msf_telnet          - Telnet credential scanner"
     echo "  msf_iis_webdav      - IIS WebDAV exploit"
     echo "  msf_rdp_scan        - RDP vulnerability scanner"
+    echo "  msf_glassfish_traversal - GlassFish directory traversal"
+    echo "  msf_struts_rce      - Struts2 OGNL RCE"
+    echo "  msf_jenkins_script  - Jenkins script console exploit"
+    echo "  msf_elasticsearch_rce - Elasticsearch MVEL RCE"
+    echo "  msf_manageengine    - ManageEngine deserialization"
+    echo "  msf_win_ftp         - MS3 Windows FTP login scanner"
+    echo "  msf_ad_smb_login    - AD SMB login scanner"
+    echo "  msf_ad_psexec       - AD PSExec lateral movement"
 }
 
 # Initialize attack log if not exists
@@ -540,6 +589,65 @@ run_msf_attack() {
 }
 
 ###############################################################################
+# AD ATTACK RUNNER (VLAN 30 — RESTRICTED)
+###############################################################################
+
+run_ad_attack() {
+    local subtype="$1"
+    local category="$2"
+    local technique="$3"
+    local tool="$4"
+    local target_ip="$5"
+    local target_port="$6"
+    local service="$7"
+    local notes="$8"
+    local attack_id=$(gen_attack_id)
+
+    # VLAN 30 IP validation
+    if [[ ! "$target_ip" =~ ^10\.10\.30\.[0-9]+$ ]]; then
+        echo -e "${RED}╔═══════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${RED}║  SAFETY ABORT: Target IP '$target_ip' is NOT in VLAN 30      ║${NC}"
+        echo -e "${RED}║  AD attacks are restricted to 10.10.30.0/24 only.            ║${NC}"
+        echo -e "${RED}╚═══════════════════════════════════════════════════════════════╝${NC}"
+        exit 1
+    fi
+
+    log_start "$attack_id" "$category" "$subtype" "$technique" "$tool" "$target_ip" "$target_port" "$service" "$notes"
+
+    # Stricter confirmation for VLAN 30
+    echo -e "${RED}"
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    echo "║  ⚠  WARNING: VLAN 30 (Lab Network) TARGET                    ║"
+    echo "║  This attack targets Active Directory infrastructure.        ║"
+    echo "║  Target: ${target_ip}:${target_port}"
+    echo "║  Domain: ${AD_DOMAIN}"
+    echo "╚═══════════════════════════════════════════════════════════════╝"
+    echo -e "${NC}"
+
+    if [[ "$AUTO_CONFIRM" == "true" ]]; then
+        echo -e "${GREEN}Auto-confirmed (campaign mode)${NC}"
+    else
+        read -p "Type CONFIRM-AD to proceed: " confirm
+        if [[ "$confirm" != "CONFIRM-AD" ]]; then
+            echo "Attack cancelled — required 'CONFIRM-AD'"
+            exit 0
+        fi
+    fi
+
+    echo -e "${GREEN}[$(date -u +%Y-%m-%dT%H:%M:%SZ)]${NC} AD attack starting..."
+
+    local script_path="${SCRIPTS_DIR}/ad_attacks.sh"
+    if [[ -f "$script_path" ]]; then
+        bash "$script_path" "$subtype" "$target_ip" "$target_port" "${RESULTS_BASE}/${attack_id}" || true
+    else
+        echo -e "${RED}Script not found: $script_path${NC}"
+    fi
+
+    echo -e "${GREEN}[$(date -u +%Y-%m-%dT%H:%M:%SZ)]${NC} AD attack complete"
+    log_complete "$attack_id" "$category" "$subtype" "$technique" "$tool" "$target_ip" "$target_port" "$service" "true" "$notes"
+}
+
+###############################################################################
 # MAIN — Argument Parsing
 ###############################################################################
 
@@ -814,7 +922,7 @@ case "$ATTACK_TYPE" in
         ;;
 
     # =========================================================================
-    # Windows Attacks
+    # Windows Attacks (Original)
     # =========================================================================
     win_rdp_brute)
         run_script_attack "windows_attacks.sh" "rdp_brute" "credential" "T1110" "hydra" "$WINDOWS_IP" "3389" "rdp" "$NOTES"
@@ -830,6 +938,102 @@ case "$ATTACK_TYPE" in
         ;;
     win_full)
         run_script_attack "windows_attacks.sh" "full" "exploit" "T1210" "custom" "$WINDOWS_IP" "445" "multi" "$NOTES"
+        ;;
+
+    # =========================================================================
+    # Windows Attacks (Expanded MS3 Services)
+    # =========================================================================
+    win_ftp_brute)
+        run_script_attack "windows_attacks.sh" "ftp_brute" "credential" "T1110.001" "hydra" "$WINDOWS_IP" "21" "ftp" "$NOTES"
+        ;;
+    win_ssh_brute)
+        run_script_attack "windows_attacks.sh" "ssh_brute" "credential" "T1110.001" "hydra" "$WINDOWS_IP" "22" "ssh" "$NOTES"
+        ;;
+    win_mysql_attack)
+        run_script_attack "windows_attacks.sh" "mysql_attack" "exploit" "T1190" "nmap" "$WINDOWS_IP" "3306" "mysql" "$NOTES"
+        ;;
+    win_glassfish)
+        run_script_attack "windows_attacks.sh" "glassfish" "exploit" "T1190" "curl" "$WINDOWS_IP" "4848" "glassfish" "$NOTES"
+        ;;
+    win_struts)
+        run_script_attack "windows_attacks.sh" "struts" "exploit" "T1190" "curl" "$WINDOWS_IP" "8282" "struts" "$NOTES"
+        ;;
+    win_jenkins)
+        run_script_attack "windows_attacks.sh" "jenkins" "exploit" "T1190" "curl" "$WINDOWS_IP" "8484" "jenkins" "$NOTES"
+        ;;
+    win_wamp)
+        run_script_attack "windows_attacks.sh" "wamp" "exploit" "T1190" "curl" "$WINDOWS_IP" "8585" "http" "$NOTES"
+        ;;
+    win_elasticsearch)
+        run_script_attack "windows_attacks.sh" "elasticsearch" "exploit" "T1190" "curl" "$WINDOWS_IP" "9200" "elasticsearch" "$NOTES"
+        ;;
+    win_manageengine)
+        run_script_attack "windows_attacks.sh" "manageengine" "exploit" "T1190" "curl" "$WINDOWS_IP" "8020" "manageengine" "$NOTES"
+        ;;
+
+    # =========================================================================
+    # WAF/Honeypot Attacks
+    # =========================================================================
+    waf_sqli_bypass)
+        run_script_attack "waf_attacks.sh" "sqli_bypass" "evasion" "T1190" "curl" "$HONEYPOT_IP" "$HONEYPOT_HTTP_PORT" "http" "$NOTES"
+        ;;
+    waf_xss_bypass)
+        run_script_attack "waf_attacks.sh" "xss_bypass" "evasion" "T1189" "curl" "$HONEYPOT_IP" "$HONEYPOT_HTTP_PORT" "http" "$NOTES"
+        ;;
+    waf_path_bypass)
+        run_script_attack "waf_attacks.sh" "path_bypass" "evasion" "T1083" "curl" "$HONEYPOT_IP" "$HONEYPOT_HTTP_PORT" "http" "$NOTES"
+        ;;
+    waf_rce_bypass)
+        run_script_attack "waf_attacks.sh" "rce_bypass" "evasion" "T1059" "curl" "$HONEYPOT_IP" "$HONEYPOT_HTTP_PORT" "http" "$NOTES"
+        ;;
+    waf_protocol_abuse)
+        run_script_attack "waf_attacks.sh" "protocol_abuse" "evasion" "T1190" "curl" "$HONEYPOT_IP" "$HONEYPOT_HTTP_PORT" "http" "$NOTES"
+        ;;
+    waf_scanner_evasion)
+        run_script_attack "waf_attacks.sh" "scanner_evasion" "evasion" "T1595" "nikto" "$HONEYPOT_IP" "$HONEYPOT_HTTP_PORT" "http" "$NOTES"
+        ;;
+    waf_rate_flood)
+        run_script_attack "waf_attacks.sh" "rate_flood" "evasion" "T1498" "curl" "$HONEYPOT_IP" "$HONEYPOT_HTTP_PORT" "http" "$NOTES"
+        ;;
+    waf_fingerprint)
+        run_script_attack "waf_attacks.sh" "fingerprint" "recon" "T1592" "curl" "$HONEYPOT_IP" "$HONEYPOT_HTTP_PORT" "http" "$NOTES"
+        ;;
+    waf_full)
+        run_script_attack "waf_attacks.sh" "full" "evasion" "T1190" "mixed" "$HONEYPOT_IP" "$HONEYPOT_HTTP_PORT" "http" "$NOTES"
+        ;;
+
+    # =========================================================================
+    # Active Directory Attacks (VLAN 30 — RESTRICTED)
+    # =========================================================================
+    ad_ldap_enum)
+        run_ad_attack "ldap_enum" "recon" "T1087.002" "ldapsearch" "$AD_DC_IP" "389" "ldap" "$NOTES"
+        ;;
+    ad_kerb_enum)
+        run_ad_attack "kerb_enum" "recon" "T1558" "kerbrute" "$AD_DC_IP" "88" "kerberos" "$NOTES"
+        ;;
+    ad_kerberoast)
+        run_ad_attack "kerberoast" "credential" "T1558.003" "impacket" "$AD_DC_IP" "88" "kerberos" "$NOTES"
+        ;;
+    ad_asrep_roast)
+        run_ad_attack "asrep_roast" "credential" "T1558.004" "impacket" "$AD_DC_IP" "88" "kerberos" "$NOTES"
+        ;;
+    ad_password_spray)
+        run_ad_attack "password_spray" "credential" "T1110.003" "crackmapexec" "$AD_DC_IP" "445" "smb" "$NOTES"
+        ;;
+    ad_bloodhound)
+        run_ad_attack "bloodhound" "recon" "T1087.002" "bloodhound-python" "$AD_DC_IP" "389" "ldap" "$NOTES"
+        ;;
+    ad_dcsync)
+        run_ad_attack "dcsync" "credential" "T1003.006" "impacket" "$AD_DC_IP" "445" "smb" "$NOTES"
+        ;;
+    ad_lateral_pth)
+        run_ad_attack "lateral_pth" "lateral" "T1550.002" "impacket" "$AD_WS_IP" "445" "smb" "$NOTES"
+        ;;
+    ad_zerologon)
+        run_ad_attack "zerologon" "exploit" "T1210" "nmap" "$AD_DC_IP" "135" "rpc" "$NOTES"
+        ;;
+    ad_full)
+        run_ad_attack "full" "exploit" "T1210" "mixed" "$AD_DC_IP" "445" "multi" "$NOTES"
         ;;
 
     # =========================================================================
@@ -889,6 +1093,30 @@ case "$ATTACK_TYPE" in
         ;;
     msf_rdp_scan)
         run_msf_attack "rdp_scanner.rc" "$WINDOWS_IP" "3389" "recon" "rdp_scan" "T1046" "$NOTES"
+        ;;
+    msf_glassfish_traversal)
+        run_msf_attack "glassfish_traversal.rc" "$WINDOWS_IP" "4848" "exploit" "glassfish_traversal" "T1190" "$NOTES"
+        ;;
+    msf_struts_rce)
+        run_msf_attack "struts_rce.rc" "$WINDOWS_IP" "8282" "exploit" "struts_rce" "T1190" "$NOTES"
+        ;;
+    msf_jenkins_script)
+        run_msf_attack "jenkins_script.rc" "$WINDOWS_IP" "8484" "exploit" "jenkins_script" "T1190" "$NOTES"
+        ;;
+    msf_elasticsearch_rce)
+        run_msf_attack "elasticsearch_rce.rc" "$WINDOWS_IP" "9200" "exploit" "elasticsearch_rce" "T1190" "$NOTES"
+        ;;
+    msf_manageengine)
+        run_msf_attack "manageengine_deser.rc" "$WINDOWS_IP" "8020" "exploit" "manageengine_deser" "T1190" "$NOTES"
+        ;;
+    msf_win_ftp)
+        run_msf_attack "win_ftp_login.rc" "$WINDOWS_IP" "21" "credential" "win_ftp_login" "T1110" "$NOTES"
+        ;;
+    msf_ad_smb_login)
+        run_msf_attack "ad_smb_login.rc" "$AD_DC_IP" "445" "credential" "ad_smb_login" "T1110" "$NOTES"
+        ;;
+    msf_ad_psexec)
+        run_msf_attack "ad_psexec.rc" "$AD_WS_IP" "445" "exploit" "ad_psexec" "T1021.002" "$NOTES"
         ;;
 
     "")

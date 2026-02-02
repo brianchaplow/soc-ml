@@ -1,0 +1,13 @@
+use auxiliary/scanner/ftp/ftp_login
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+set USER_FILE %%WORDLISTS%%/ms3_users.txt
+set PASS_FILE %%WORDLISTS%%/ms3_passwords.txt
+set BRUTEFORCE_SPEED 3
+set STOP_ON_SUCCESS true
+run
+
+use auxiliary/scanner/ftp/anonymous
+set RHOSTS %%TARGET_IP%%
+set RPORT %%TARGET_PORT%%
+run
