@@ -80,7 +80,6 @@ phases:
       - owasp_ssrf
     targets:
       - 10.10.40.10
-      - 10.10.40.10
 
   - name: credential_attacks
     start_hour: 20
@@ -136,7 +135,7 @@ phases:
       - snmp_enum
     targets:
       - 10.10.40.20
-      - 10.10.40.32
+      - 10.10.40.43
 
   - name: evasion_exfil
     start_hour: 52
@@ -192,5 +191,7 @@ targets:
   windows: { ip: "10.10.40.21", ports: [80, 445, 3389, 5985] }
   wordpress: { ip: "10.10.40.30", ports: [80, 443] }
   crapi: { ip: "10.10.40.31", ports: [80, 443] }
-  services: { ip: "10.10.40.32", ports: [21, 25, 161] }
+  vsftpd: { ip: "10.10.40.32", ports: [21] }
+  smtp: { ip: "10.10.40.42", ports: [25] }
+  snmpd: { ip: "10.10.40.43", ports: [161] }
   honeypot: { ip: "10.10.40.33", ports: [8080] }
