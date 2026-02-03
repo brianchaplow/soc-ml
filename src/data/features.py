@@ -366,6 +366,112 @@ class FeatureEngineer:
 
         return features
 
+    def _extract_zeek_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Extract features from Zeek conn.log enrichment columns.
+
+        ~31 features across 6 groups:
+        - Duration (3): raw, log, has_match
+        - Connection state (11): one-hot + aggregated indicators
+        - History flags (5): length, data/reset/fin/partial indicators
+        - Service (8): DPI-based classification + port mismatch
+        - Byte overhead (4): IP overhead ratios, missed bytes
+
+        All features handle missing Zeek data gracefully (NaN -> defaults).
+        None of these features leak labels.
+        """
+        features = pd.DataFrame(index=df.index)
+
+        has_zeek = 'zeek_uid' in df.columns
+        has_match = df['zeek_uid'].notna() if has_zeek else pd.Series(False, index=df.index)
+
+        # --- Duration (3 features) ---
+        if has_zeek and 'zeek_duration' in df.columns:
+            duration = pd.to_numeric(df['zeek_duration'], errors='coerce')
+        else:
+            duration = pd.Series(np.nan, index=df.index)
+
+        features['zeek_duration'] = duration.fillna(-1)
+        features['zeek_duration_log'] = np.log1p(duration.clip(lower=0)).fillna(0)
+        features['zeek_has_match'] = has_match.astype(int)
+
+        # --- Connection state one-hot (11 features) ---
+        if has_zeek and 'zeek_conn_state' in df.columns:
+            conn_state = df['zeek_conn_state'].fillna('')
+        else:
+            conn_state = pd.Series('', index=df.index)
+
+        for state in ['S0', 'S1', 'SF', 'REJ', 'RSTO', 'RSTR', 'SH', 'OTH']:
+            features[f'zeek_state_{state}'] = (conn_state == state).astype(int)
+
+        features['zeek_state_is_normal'] = conn_state.isin(['SF', 'S1']).astype(int)
+        features['zeek_state_is_scan'] = conn_state.isin(['S0', 'SH', 'SHR']).astype(int)
+        features['zeek_state_is_rejected'] = conn_state.isin(['REJ', 'RSTO', 'RSTR']).astype(int)
+
+        # --- History flags (5 features) ---
+        if has_zeek and 'zeek_history' in df.columns:
+            history = df['zeek_history'].fillna('')
+        else:
+            history = pd.Series('', index=df.index)
+
+        features['zeek_history_len'] = history.str.len()
+        features['zeek_history_has_data'] = history.str.contains('[Dd]', regex=True, na=False).astype(int)
+        features['zeek_history_has_reset'] = history.str.contains('[Rr]', regex=True, na=False).astype(int)
+        features['zeek_history_has_fin'] = history.str.contains('[Ff]', regex=True, na=False).astype(int)
+        features['zeek_history_is_partial'] = (~history.str.contains('[Ss]', regex=True, na=False) & (history.str.len() > 0)).astype(int)
+
+        # --- Service (8 features) ---
+        if has_zeek and 'zeek_service' in df.columns:
+            service = df['zeek_service'].fillna('').astype(str).str.lower()
+        else:
+            service = pd.Series('', index=df.index)
+
+        for svc in ['http', 'ssl', 'ssh', 'dns', 'ftp', 'smtp']:
+            features[f'zeek_service_is_{svc}'] = service.str.contains(svc, na=False).astype(int)
+
+        features['zeek_service_known'] = ((service != '') & (service != '-') & (service != 'nan')).astype(int)
+
+        # Port-service mismatch detection
+        dest_port = pd.to_numeric(df.get('dest_port', 0), errors='coerce').fillna(0).astype(int)
+        port_to_service = {
+            80: 'http', 8080: 'http', 8000: 'http', 3000: 'http',
+            443: 'ssl', 8443: 'ssl',
+            22: 'ssh', 53: 'dns', 20: 'ftp', 21: 'ftp', 25: 'smtp'
+        }
+        expected_service = dest_port.map(port_to_service).fillna('')
+
+        # Mismatch: port implies a service, Zeek identified a service, but they differ
+        service_matches_expected = pd.Series(
+            [exp == '' or exp in svc for svc, exp in zip(service, expected_service)],
+            index=df.index
+        )
+        features['zeek_port_service_mismatch'] = (
+            features['zeek_service_known'].astype(bool) &
+            (expected_service != '') &
+            ~service_matches_expected
+        ).astype(int)
+
+        # --- Byte overhead (4 features) ---
+        if has_zeek:
+            orig_bytes = pd.to_numeric(df.get('zeek_orig_bytes', 0), errors='coerce').fillna(0)
+            resp_bytes = pd.to_numeric(df.get('zeek_resp_bytes', 0), errors='coerce').fillna(0)
+            orig_ip_bytes = pd.to_numeric(df.get('zeek_orig_ip_bytes', 0), errors='coerce').fillna(0)
+            resp_ip_bytes = pd.to_numeric(df.get('zeek_resp_ip_bytes', 0), errors='coerce').fillna(0)
+            missed = pd.to_numeric(df.get('zeek_missed_bytes', 0), errors='coerce').fillna(0)
+        else:
+            orig_bytes = pd.Series(0, index=df.index)
+            resp_bytes = pd.Series(0, index=df.index)
+            orig_ip_bytes = pd.Series(0, index=df.index)
+            resp_ip_bytes = pd.Series(0, index=df.index)
+            missed = pd.Series(0, index=df.index)
+
+        features['zeek_overhead_ratio_orig'] = (orig_ip_bytes - orig_bytes) / (orig_bytes + 1)
+        features['zeek_overhead_ratio_resp'] = (resp_ip_bytes - resp_bytes) / (resp_bytes + 1)
+        features['zeek_missed_bytes'] = missed
+        features['zeek_has_missed_bytes'] = (missed > 0).astype(int)
+
+        return features
+
     def _extract_protocol_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Extract protocol-specific traffic indicator features.
@@ -451,8 +557,8 @@ class FeatureEngineer:
         logger.info("Feature Engineering v2 (Leakage-Free)")
         logger.info("=" * 60)
         logger.info("EXCLUDED features: severity, signature_id (data leakage)")
-        logger.info("INCLUDED features: network behavior, flow stats, timing")
-        
+        logger.info("INCLUDED features: network behavior, flow stats, timing, zeek conn")
+
         # Extract all feature groups
         network_features = self._extract_network_features(df)
         flow_features = self._extract_flow_features(df)
@@ -464,6 +570,7 @@ class FeatureEngineer:
         time_features = self._extract_time_features(df)
         connection_features = self._extract_connection_features(df)
         protocol_features = self._extract_protocol_features(df)
+        zeek_features = self._extract_zeek_features(df)
 
         # Combine all features
         all_features = pd.concat([
@@ -472,7 +579,8 @@ class FeatureEngineer:
             ip_features,
             time_features,
             connection_features,
-            protocol_features
+            protocol_features,
+            zeek_features
         ], axis=1)
         
         # Remove any duplicate columns
@@ -504,6 +612,7 @@ class FeatureEngineer:
         logger.info(f"  - Time-based: hour, day, business hours")
         logger.info(f"  - Connection rate: connections/5min, unique ports/IPs")
         logger.info(f"  - Protocol-specific: SMB, DNS, RDP, SNMP, FTP indicators")
+        logger.info(f"  - Zeek conn: duration, conn_state, history, service, overhead")
         
         return X, self.feature_names
     
@@ -521,7 +630,7 @@ class FeatureEngineer:
             raise ValueError("FeatureEngineer not fitted. Call fit_transform first.")
         
         logger.info("Extracting features (transform mode)...")
-        
+
         # Extract all feature groups
         network_features = self._extract_network_features(df)
         flow_features = self._extract_flow_features(df)
@@ -533,6 +642,7 @@ class FeatureEngineer:
         time_features = self._extract_time_features(df)
         connection_features = self._extract_connection_features(df)
         protocol_features = self._extract_protocol_features(df)
+        zeek_features = self._extract_zeek_features(df)
 
         # Combine
         all_features = pd.concat([
@@ -541,7 +651,8 @@ class FeatureEngineer:
             ip_features,
             time_features,
             connection_features,
-            protocol_features
+            protocol_features,
+            zeek_features
         ], axis=1)
         
         # Remove duplicates
@@ -604,15 +715,16 @@ class FeatureEngineer:
     def get_feature_groups(self) -> Dict[str, List[str]]:
         """Return features grouped by category for analysis."""
         groups = {
-            'flow_stats': [f for f in self.feature_names if any(x in f for x in ['bytes', 'pkts', 'flow'])],
-            'port_based': [f for f in self.feature_names if 'port' in f or 'dest_is_' in f],
-            'protocol': [f for f in self.feature_names if 'proto' in f],
+            'flow_stats': [f for f in self.feature_names if any(x in f for x in ['bytes', 'pkts', 'flow']) and not f.startswith('zeek_')],
+            'port_based': [f for f in self.feature_names if ('port' in f or 'dest_is_' in f) and not f.startswith('zeek_')],
+            'protocol': [f for f in self.feature_names if 'proto' in f and not f.startswith('zeek_')],
             'direction': [f for f in self.feature_names if 'direction' in f or 'bound' in f],
             'vlan': [f for f in self.feature_names if 'vlan' in f],
-            'ip_based': [f for f in self.feature_names if 'internal' in f or 'private' in f or 'traffic' in f],
+            'ip_based': [f for f in self.feature_names if ('internal' in f or 'private' in f or 'traffic' in f) and not f.startswith('zeek_')],
             'time_based': [f for f in self.feature_names if any(x in f for x in ['hour', 'day', 'weekend', 'business', 'night'])],
             'connection_rate': [f for f in self.feature_names if any(x in f for x in ['connections_to', 'unique_dest'])],
-            'protocol_specific': [f for f in self.feature_names if any(x in f for x in ['is_smb', 'is_dns', 'is_rdp', 'is_snmp', 'is_ftp'])]
+            'protocol_specific': [f for f in self.feature_names if any(x in f for x in ['is_smb', 'is_dns', 'is_rdp', 'is_snmp', 'is_ftp']) and not f.startswith('zeek_')],
+            'zeek_conn': [f for f in self.feature_names if f.startswith('zeek_')]
         }
         return groups
     

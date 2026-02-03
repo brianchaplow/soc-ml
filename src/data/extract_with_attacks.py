@@ -289,47 +289,52 @@ class GroundTruthExtractor(DataExtractor):
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         max_alerts: int = 100000,
-        max_flows: int = 50000
+        max_flows: int = 50000,
+        zeek_enrich: bool = True
     ) -> pd.DataFrame:
         """
         Extract data and apply ground-truth labels from attack log.
-        
+
         Args:
             start_date: Start date for extraction
             end_date: End date for extraction
             max_alerts: Maximum alerts to pull
             max_flows: Maximum flows to pull
-            
+            zeek_enrich: Whether to enrich with Zeek conn.log data
+
         Returns:
             DataFrame with ground-truth labels
         """
         logger.info("=" * 60)
         logger.info("Ground Truth Extraction Pipeline")
+        logger.info(f"Zeek enrichment: {'enabled' if zeek_enrich else 'disabled'}")
         logger.info("=" * 60)
-        
+
         # Extract alerts
         logger.info("\n[1/3] Extracting alerts...")
         alerts_df = self.extract_alerts(
             start_date=start_date,
             end_date=end_date,
-            max_records=max_alerts
+            max_records=max_alerts,
+            zeek_enrich=zeek_enrich
         )
-        
+
         if not alerts_df.empty:
             # Apply ground-truth labels
             alerts_df = self.correlator.label_dataframe(alerts_df)
-            
+
             # Update label_binary based on ground truth
             # If attack_confirmed, definitely an attack
             # Otherwise, use the existing classification
             alerts_df.loc[alerts_df['attack_confirmed'], 'label_binary'] = 'attack'
-        
+
         # Extract flows (benign baseline)
         logger.info("\n[2/3] Extracting flows...")
         flows_df = self.extract_flows(
             start_date=start_date,
             end_date=end_date,
-            max_records=max_flows
+            max_records=max_flows,
+            zeek_enrich=zeek_enrich
         )
         
         if not flows_df.empty:
@@ -377,9 +382,11 @@ if __name__ == "__main__":
     parser.add_argument('--max-flows', type=int, default=50000)
     parser.add_argument('--attack-log', default=None)
     parser.add_argument('--output', default=None)
-    
+    parser.add_argument('--no-zeek', action='store_true',
+                        help='Disable Zeek conn.log enrichment')
+
     args = parser.parse_args()
-    
+
     extractor = get_ground_truth_extractor(args.attack_log)
     
     # Show attack summary
@@ -392,7 +399,8 @@ if __name__ == "__main__":
         start_date=args.start,
         end_date=args.end,
         max_alerts=args.max_alerts,
-        max_flows=args.max_flows
+        max_flows=args.max_flows,
+        zeek_enrich=not args.no_zeek
     )
     
     # Save if output specified

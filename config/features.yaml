@@ -300,6 +300,75 @@ features:
       type: numeric
       description: Rule SID (can indicate rule family)
 
+  # Zeek conn.log enrichment features (Phase 1)
+  zeek_conn:
+    # Duration features
+    - name: zeek_duration
+      type: numeric
+      description: Connection duration in seconds (-1 if no Zeek match)
+    - name: zeek_duration_log
+      type: numeric
+      description: Log1p transform of duration
+    - name: zeek_has_match
+      type: boolean
+      description: Whether a Zeek conn record matched this Suricata record
+
+    # Connection state one-hot
+    - name: zeek_state_{S0,S1,SF,REJ,RSTO,RSTR,SH,OTH}
+      type: boolean
+      description: One-hot per Zeek conn_state value
+    - name: zeek_state_is_normal
+      type: boolean
+      description: SF or S1 (successful connection)
+    - name: zeek_state_is_scan
+      type: boolean
+      description: S0, SH, SHR (incomplete handshake = scanning)
+    - name: zeek_state_is_rejected
+      type: boolean
+      description: REJ, RSTO, RSTR (connection rejected/reset)
+
+    # History flags
+    - name: zeek_history_len
+      type: numeric
+      description: Length of Zeek history string
+    - name: zeek_history_has_data
+      type: boolean
+      description: History contains D/d (data transferred)
+    - name: zeek_history_has_reset
+      type: boolean
+      description: History contains R/r (RST sent)
+    - name: zeek_history_has_fin
+      type: boolean
+      description: History contains F/f (FIN sent)
+    - name: zeek_history_is_partial
+      type: boolean
+      description: No SYN in history (midstream capture)
+
+    # Service classification
+    - name: zeek_service_is_{http,ssl,ssh,dns,ftp,smtp}
+      type: boolean
+      description: Zeek DPI detected this service
+    - name: zeek_service_known
+      type: boolean
+      description: Zeek identified the service (vs unknown)
+    - name: zeek_port_service_mismatch
+      type: boolean
+      description: Port does not match Zeek-detected service
+
+    # Byte overhead
+    - name: zeek_overhead_ratio_orig
+      type: numeric
+      description: (ip_bytes - app_bytes) / (app_bytes + 1) for originator
+    - name: zeek_overhead_ratio_resp
+      type: numeric
+      description: Same ratio for responder
+    - name: zeek_missed_bytes
+      type: numeric
+      description: Bytes Zeek could not capture
+    - name: zeek_has_missed_bytes
+      type: boolean
+      description: Whether any bytes were missed
+
   # Well-known ports for categorical encoding
   port_categories:
     web: [80, 443, 3000, 8080, 8443, 8888]

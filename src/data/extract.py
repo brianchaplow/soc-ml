@@ -18,6 +18,7 @@ import yaml
 from tqdm import tqdm
 
 from ..utils.opensearch import get_client, SOCOpenSearchClient
+from ..utils.zeek import ZeekEnricher
 
 # Configure logging
 logging.basicConfig(
@@ -150,64 +151,115 @@ class DataExtractor:
         
         return 'unknown'
     
+    def _zeek_enrich_df(
+        self,
+        df: pd.DataFrame,
+        start_date: Optional[str],
+        end_date: Optional[str],
+        max_records: Optional[int]
+    ) -> pd.DataFrame:
+        """
+        Enrich a Suricata DataFrame with Zeek conn.log data.
+
+        Args:
+            df: Suricata alerts or flows DataFrame
+            start_date: Date range start for Zeek query
+            end_date: Date range end for Zeek query
+            max_records: Suricata record count (Zeek pulls multiplier of this)
+
+        Returns:
+            Enriched DataFrame
+        """
+        zeek_config = self.os_client.config.get('zeek', {})
+        correlation = zeek_config.get('correlation', {})
+        multiplier = correlation.get('max_records_multiplier', 3)
+        time_tolerance = correlation.get('time_tolerance', 2.0)
+
+        zeek_max = (max_records or len(df)) * multiplier
+
+        logger.info(f"Pulling Zeek conn records (max {zeek_max:,})...")
+        zeek_df = self.os_client.get_zeek_conn(
+            start_date=start_date,
+            end_date=end_date,
+            max_records=zeek_max
+        )
+
+        if zeek_df.empty:
+            logger.warning("No Zeek conn records found, skipping enrichment")
+            return df
+
+        enricher = ZeekEnricher()
+        zeek_df = enricher.normalize_fields(zeek_df)
+        df = enricher.enrich(df, zeek_df, time_tolerance=time_tolerance)
+
+        return df
+
     def extract_alerts(
         self,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         max_records: Optional[int] = None,
-        cache: bool = True
+        cache: bool = True,
+        zeek_enrich: bool = True
     ) -> pd.DataFrame:
         """
         Extract alerts from OpenSearch with labels.
-        
+
         Args:
             start_date: Start date (ISO format)
             end_date: End date (ISO format)
             max_records: Max records to pull
             cache: Whether to cache results
-            
+            zeek_enrich: Whether to enrich with Zeek conn.log data
+
         Returns:
             DataFrame with alerts and labels
         """
-        # Generate cache key
+        # Generate cache key (include zeek suffix when enriching)
+        cache_suffix = "_zeek" if zeek_enrich else ""
         cache_key = hashlib.md5(
-            f"{start_date}_{end_date}_{max_records}".encode()
+            f"{start_date}_{end_date}_{max_records}{cache_suffix}".encode()
         ).hexdigest()[:8]
         cache_path = os.path.join(self.data_dir, 'raw', f'alerts_{cache_key}.parquet')
-        
+
         # Check cache
         if cache and os.path.exists(cache_path):
             logger.info(f"Loading cached alerts from {cache_path}")
             return pd.read_parquet(cache_path)
-        
+
         logger.info("Extracting alerts from OpenSearch...")
-        
+
         # Pull data
         df = self.os_client.get_alerts(
             start_date=start_date,
             end_date=end_date,
             max_records=max_records
         )
-        
+
         if df.empty:
             return df
-        
+
+        # Zeek enrichment
+        zeek_enabled = self.os_client.config.get('zeek', {}).get('enabled', True)
+        if zeek_enrich and zeek_enabled:
+            df = self._zeek_enrich_df(df, start_date, end_date, max_records)
+
         # Add labels
         logger.info("Classifying alerts...")
         df['label_binary'] = df.apply(self._classify_alert, axis=1)
-        
+
         # Add attack type for attacks
         attack_mask = df['label_binary'] == 'attack'
         df.loc[attack_mask, 'label_attack_type'] = df[attack_mask].apply(
             self._classify_attack_type, axis=1
         )
         df['label_attack_type'] = df['label_attack_type'].fillna('none')
-        
+
         # Cache
         if cache:
             df.to_parquet(cache_path)
             logger.info(f"Cached alerts to {cache_path}")
-        
+
         return df
     
     def extract_flows(
@@ -215,48 +267,56 @@ class DataExtractor:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         max_records: Optional[int] = None,
-        cache: bool = True
+        cache: bool = True,
+        zeek_enrich: bool = True
     ) -> pd.DataFrame:
         """
         Extract flow records (benign baseline) from OpenSearch.
-        
+
         Args:
             start_date: Start date
             end_date: End date
             max_records: Max records
             cache: Whether to cache
-            
+            zeek_enrich: Whether to enrich with Zeek conn.log data
+
         Returns:
             DataFrame with flows
         """
+        cache_suffix = "_zeek" if zeek_enrich else ""
         cache_key = hashlib.md5(
-            f"flows_{start_date}_{end_date}_{max_records}".encode()
+            f"flows_{start_date}_{end_date}_{max_records}{cache_suffix}".encode()
         ).hexdigest()[:8]
         cache_path = os.path.join(self.data_dir, 'raw', f'flows_{cache_key}.parquet')
-        
+
         if cache and os.path.exists(cache_path):
             logger.info(f"Loading cached flows from {cache_path}")
             return pd.read_parquet(cache_path)
-        
+
         logger.info("Extracting flows from OpenSearch...")
-        
+
         df = self.os_client.get_flows(
             start_date=start_date,
             end_date=end_date,
             max_records=max_records
         )
-        
+
         if df.empty:
             return df
-        
+
+        # Zeek enrichment
+        zeek_enabled = self.os_client.config.get('zeek', {}).get('enabled', True)
+        if zeek_enrich and zeek_enabled:
+            df = self._zeek_enrich_df(df, start_date, end_date, max_records)
+
         # Label as benign
         df['label_binary'] = 'benign'
         df['label_attack_type'] = 'none'
-        
+
         if cache:
             df.to_parquet(cache_path)
             logger.info(f"Cached flows to {cache_path}")
-        
+
         return df
     
     def create_balanced_dataset(
@@ -364,53 +424,60 @@ class DataExtractor:
         test_end: str = "2026-01-27",
         max_alerts: int = 500000,
         max_flows: int = 200000,
-        save: bool = True
+        save: bool = True,
+        zeek_enrich: bool = True
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Full extraction and preparation pipeline.
-        
+
         Args:
             train_start/end: Training date range
             test_start/end: Testing date range
             max_alerts: Max alerts to pull
             max_flows: Max flows to pull
             save: Whether to save splits
-            
+            zeek_enrich: Whether to enrich with Zeek conn.log data
+
         Returns:
             Tuple of (train_df, test_df)
         """
         logger.info("=" * 60)
         logger.info("SOC-ML Data Extraction Pipeline")
+        logger.info(f"Zeek enrichment: {'enabled' if zeek_enrich else 'disabled'}")
         logger.info("=" * 60)
-        
+
         # Extract training data
         logger.info(f"\n[1/4] Extracting training alerts ({train_start} to {train_end})...")
         train_alerts = self.extract_alerts(
             start_date=train_start,
             end_date=train_end,
-            max_records=max_alerts
+            max_records=max_alerts,
+            zeek_enrich=zeek_enrich
         )
-        
+
         logger.info(f"\n[2/4] Extracting training flows...")
         train_flows = self.extract_flows(
             start_date=train_start,
             end_date=train_end,
-            max_records=max_flows
+            max_records=max_flows,
+            zeek_enrich=zeek_enrich
         )
-        
+
         # Extract test data
         logger.info(f"\n[3/4] Extracting test alerts ({test_start} to {test_end})...")
         test_alerts = self.extract_alerts(
             start_date=test_start,
             end_date=test_end,
-            max_records=max_alerts // 4  # Smaller test set
+            max_records=max_alerts // 4,  # Smaller test set
+            zeek_enrich=zeek_enrich
         )
-        
+
         logger.info(f"\n[4/4] Extracting test flows...")
         test_flows = self.extract_flows(
             start_date=test_start,
             end_date=test_end,
-            max_records=max_flows // 4
+            max_records=max_flows // 4,
+            zeek_enrich=zeek_enrich
         )
         
         # Create balanced datasets
@@ -456,9 +523,11 @@ if __name__ == "__main__":
     parser.add_argument('--test-end', default='2026-01-27')
     parser.add_argument('--max-alerts', type=int, default=500000)
     parser.add_argument('--max-flows', type=int, default=200000)
-    
+    parser.add_argument('--no-zeek', action='store_true',
+                        help='Disable Zeek conn.log enrichment')
+
     args = parser.parse_args()
-    
+
     extractor = get_extractor()
     train_df, test_df = extractor.extract_and_prepare(
         train_start=args.train_start,
@@ -466,5 +535,6 @@ if __name__ == "__main__":
         test_start=args.test_start,
         test_end=args.test_end,
         max_alerts=args.max_alerts,
-        max_flows=args.max_flows
+        max_flows=args.max_flows,
+        zeek_enrich=not args.no_zeek
     )

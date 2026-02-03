@@ -348,6 +348,79 @@ class SOCOpenSearchClient:
         
         return df
     
+    def get_zeek_conn(
+        self,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        max_records: Optional[int] = None,
+        source_fields: Optional[List[str]] = None
+    ) -> pd.DataFrame:
+        """
+        Get Zeek conn.log records as a DataFrame.
+
+        Queries for records where source=zeek and uid exists (conn.log indicator)
+        but event_type does not exist (excludes Suricata records).
+
+        Args:
+            start_date: Start date (ISO format)
+            end_date: End date (ISO format)
+            max_records: Maximum records to return
+            source_fields: Fields to include (defaults from config)
+
+        Returns:
+            DataFrame with Zeek conn records
+        """
+        must_clauses = [
+            {"term": {"source": "zeek"}},
+            {"exists": {"field": "uid"}}
+        ]
+        must_not_clauses = [
+            {"exists": {"field": "event_type"}}
+        ]
+
+        if start_date or end_date:
+            date_range = {}
+            if start_date:
+                date_range["gte"] = start_date
+            if end_date:
+                date_range["lte"] = end_date
+            must_clauses.append({"range": {"@timestamp": date_range}})
+
+        query = {
+            "bool": {
+                "must": must_clauses,
+                "must_not": must_not_clauses
+            }
+        }
+
+        if source_fields is None:
+            zeek_config = self.config.get('zeek', {})
+            source_fields = zeek_config.get('conn_fields', [
+                "@timestamp", "uid",
+                "id.orig_h", "id.orig_p", "id.resp_h", "id.resp_p",
+                "proto", "duration", "conn_state", "history", "service",
+                "local_orig", "local_resp",
+                "orig_bytes", "resp_bytes", "orig_pkts", "resp_pkts",
+                "orig_ip_bytes", "resp_ip_bytes", "missed_bytes"
+            ])
+
+        index = self.config.get('indices', {}).get('alerts', 'fluentbit-default')
+        records = list(self.scroll_search(
+            index=index,
+            query=query,
+            source_fields=source_fields,
+            max_records=max_records
+        ))
+
+        if not records:
+            logger.warning("No Zeek conn records found matching criteria")
+            return pd.DataFrame()
+
+        df = pd.json_normalize(records)
+        logger.info(f"Retrieved {len(df)} Zeek conn records")
+
+        return df
+
     def get_aggregation(
         self,
         index: str,
@@ -413,5 +486,20 @@ if __name__ == "__main__":
                 {"term": {"event_type": event_type}}
             )
             print(f"  {event_type}: {count:,}")
+
+        # Zeek conn count
+        zeek_count = client.get_index_count(
+            'fluentbit-default',
+            {"bool": {
+                "must": [
+                    {"term": {"source": "zeek"}},
+                    {"exists": {"field": "uid"}}
+                ],
+                "must_not": [
+                    {"exists": {"field": "event_type"}}
+                ]
+            }}
+        )
+        print(f"  zeek_conn: {zeek_count:,}")
     else:
         print("❌ Connection failed!")

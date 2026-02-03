@@ -44,3 +44,31 @@ date_range:
   train_end: "2026-01-27"
   test_start: "2026-01-28"
   test_end: "2026-02-28"
+
+# Zeek conn.log enrichment settings
+zeek:
+  enabled: true
+  correlation:
+    time_tolerance: 2.0       # seconds for 5-tuple join
+    max_records_multiplier: 3  # pull 3x Suricata records of Zeek data
+  conn_fields:
+    - "@timestamp"
+    - "uid"
+    - "id.orig_h"
+    - "id.orig_p"
+    - "id.resp_h"
+    - "id.resp_p"
+    - "proto"
+    - "duration"
+    - "conn_state"
+    - "history"
+    - "service"
+    - "local_orig"
+    - "local_resp"
+    - "orig_bytes"
+    - "resp_bytes"
+    - "orig_pkts"
+    - "resp_pkts"
+    - "orig_ip_bytes"
+    - "resp_ip_bytes"
+    - "missed_bytes"
