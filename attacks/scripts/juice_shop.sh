@@ -54,7 +54,7 @@ run_xss() {
 
     # XSS in search
     for payload in "${payloads[@]}"; do
-        encoded=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$payload'))")
+        encoded=$(echo -n "$payload" | python3 -c "import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read()))")
         curl -sk "${BASE_URL}/rest/products/search?q=${encoded}" -o /dev/null 2>&1
         sleep 0.5
     done

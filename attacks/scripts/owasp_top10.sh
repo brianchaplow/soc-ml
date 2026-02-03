@@ -30,7 +30,7 @@ run_injection() {
     )
 
     for payload in "${sqli_payloads[@]}"; do
-        encoded=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''$payload'''))")
+        encoded=$(echo -n "$payload" | python3 -c "import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read()))")
         curl -sk "${BASE_URL}/vulnerabilities/sqli/?id=${encoded}&Submit=Submit" -o /dev/null 2>&1 || true
         curl -sk "${BASE_URL}/?q=${encoded}" -o /dev/null 2>&1 || true
         sleep 0.5
@@ -44,7 +44,7 @@ run_injection() {
     )
 
     for payload in "${cmdi_payloads[@]}"; do
-        encoded=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''$payload'''))")
+        encoded=$(echo -n "$payload" | python3 -c "import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read()))")
         curl -sk "${BASE_URL}/vulnerabilities/exec/" -X POST \
             -d "ip=127.0.0.1${encoded}&Submit=Submit" -o /dev/null 2>&1 || true
         sleep 0.5
@@ -105,7 +105,7 @@ run_ssrf() {
     )
 
     for url in "${ssrf_urls[@]}"; do
-        encoded=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''$url'''))")
+        encoded=$(echo -n "$url" | python3 -c "import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read()))")
         curl -sk "${BASE_URL}/vulnerabilities/fi/?page=${encoded}" -o /dev/null 2>&1 || true
         curl -sk "${BASE_URL}/?url=${encoded}" -o /dev/null 2>&1 || true
         curl -sk -X POST "${BASE_URL}/api/fetch" \
