@@ -1,0 +1,610 @@
+# Maximum Noise 48-Hour Campaign
+# Aggressive, loud attack campaign for ML training data generation
+# NO stealth, NO timing evasion - maximum IDS signature triggers
+#
+# Goal: Generate high-signal training data with distinctive network patterns
+# that don't rely on timing correlation for detection
+#
+# Prerequisites (run before campaign):
+#   ./campaigns/setup_noise_tools.sh
+#
+# New tools installed:
+#   - Sliver C2 (open-source Cobalt Strike alternative)
+#   - Nuclei (template-based vulnerability scanner)
+#   - Kerbrute (Kerberos enumeration)
+#   - BloodHound/SharpHound (AD mapping)
+#   - Responder (LLMNR/NBT-NS poisoning)
+#   - CrackMapExec (Swiss army knife for Windows)
+#   - Impacket suite (already on Kali, ensure latest)
+
+campaign:
+  name: "maximum_noise_48h"
+  description: "48-hour maximum noise campaign - loud attacks for ML training"
+  duration_hours: 48
+
+intensity:
+  schedule:
+    # No quiet periods - constant high intensity
+    - { hour: 0,  level: high }
+    - { hour: 4,  level: burst }
+    - { hour: 5,  level: high }
+    - { hour: 8,  level: burst }
+    - { hour: 9,  level: high }
+    - { hour: 12, level: burst }
+    - { hour: 13, level: high }
+    - { hour: 16, level: burst }
+    - { hour: 17, level: high }
+    - { hour: 20, level: burst }
+    - { hour: 21, level: high }
+    - { hour: 24, level: burst }
+    - { hour: 25, level: high }
+    - { hour: 28, level: burst }
+    - { hour: 29, level: high }
+    - { hour: 32, level: burst }
+    - { hour: 33, level: high }
+    - { hour: 36, level: burst }
+    - { hour: 37, level: high }
+    - { hour: 40, level: burst }
+    - { hour: 41, level: high }
+    - { hour: 44, level: burst }
+    - { hour: 45, level: high }
+    - { hour: 47, level: burst }
+
+phases:
+  # ==========================================================================
+  # PHASE 1: MAXIMUM VOLUME SCANNING (Hours 0-6)
+  # Nmap -T5 aggressive, Masscan, full service detection
+  # ==========================================================================
+  - name: recon_maximum
+    start_hour: 0
+    end_hour: 6
+    note: "Maximum volume scanning - all ports, all hosts, no throttling"
+    attacks:
+      - recon_aggressive          # nmap -T5 -A
+      - recon_syn                 # Full subnet SYN
+      - recon_full                # TCP connect all ports
+      - recon_udp                 # UDP scan
+      - recon_version             # Version detection
+      - recon_os                  # OS fingerprinting
+      - noise_masscan             # NEW: masscan full port range
+      - noise_nmap_allports       # NEW: nmap -p- -T5
+      - noise_nmap_scripts        # NEW: nmap --script=all
+    targets:
+      - 10.10.40.0/24
+
+  # ==========================================================================
+  # PHASE 2: WEB APPLICATION ASSAULT (Hours 6-14)
+  # SQLMap max level/risk, Nikto full, Nuclei all templates
+  # ==========================================================================
+  - name: web_assault
+    start_hour: 6
+    end_hour: 14
+    note: "Maximum web application attacks - no evasion, all payloads"
+    attacks:
+      # SQLi - maximum payloads
+      - web_sqli_union
+      - web_sqli_blind
+      - web_sqli_time
+      - noise_sqlmap_max          # NEW: sqlmap --level=5 --risk=3 --all
+      # XSS - all vectors
+      - web_xss
+      - juice_xss
+      - noise_xss_polyglot        # NEW: XSS polyglot payloads
+      # Command injection
+      - web_cmdi
+      - noise_cmdi_all            # NEW: All OS command variants
+      # File inclusion/traversal
+      - web_lfi
+      - web_path_traversal
+      - noise_lfi_deep            # NEW: Deep path traversal (../x100)
+      # Directory busting
+      - web_dirbusting
+      - juice_dirbusting
+      - noise_dirb_huge           # NEW: dirb with huge wordlist
+      # Nikto full scan
+      - nikto_dvwa
+      - nikto_juice
+      - nikto_full
+      # Nuclei template scanning
+      - noise_nuclei_full         # NEW: nuclei -t all
+      - noise_nuclei_cves         # NEW: nuclei CVE templates
+      # OWASP attacks
+      - owasp_injection
+      - owasp_ssrf
+      - juice_sqli
+      - juice_auth_bypass
+      - juice_bola
+      - juice_file_upload
+      # Log4Shell / Spring4Shell
+      - web_log4shell
+      - noise_spring4shell        # NEW: Spring4Shell probes
+      # Shellshock
+      - noise_shellshock          # NEW: CGI Shellshock
+    targets:
+      - 10.10.40.10
+
+  # ==========================================================================
+  # PHASE 3: BRUTE FORCE BARRAGE (Hours 14-20)
+  # Maximum threads, large wordlists, no delays
+  # ==========================================================================
+  - name: brute_force_barrage
+    start_hour: 14
+    end_hour: 20
+    note: "Maximum volume brute force - 64 threads, no delays"
+    attacks:
+      # SSH brute force
+      - brute_ssh
+      - noise_hydra_ssh_max       # NEW: hydra -t 64 with rockyou
+      # FTP brute force
+      - brute_ftp
+      - noise_hydra_ftp_max       # NEW: hydra -t 64
+      # Telnet brute force
+      - brute_telnet
+      - noise_hydra_telnet_max    # NEW: hydra -t 64
+      # Database brute force
+      - brute_mysql
+      - brute_postgres
+      - noise_hydra_mysql_max     # NEW: hydra mysql -t 64
+      - noise_medusa_parallel     # NEW: medusa parallel brute
+      # SMB brute force
+      - smb_brute
+      - noise_cme_brute           # NEW: crackmapexec smb brute
+      # RDP brute force
+      - win_rdp_brute
+      - noise_hydra_rdp_max       # NEW: hydra rdp -t 64
+      # Web login brute
+      - cred_login
+      - cred_stuffing
+      - noise_patator_http        # NEW: patator http_fuzz
+    targets:
+      - 10.10.40.10
+      - 10.10.40.20
+      - 10.10.40.21
+
+  # ==========================================================================
+  # PHASE 4: EXPLOITATION FRENZY (Hours 20-28)
+  # Metasploit modules, reverse shells, meterpreter
+  # ==========================================================================
+  - name: exploit_frenzy
+    start_hour: 20
+    end_hour: 28
+    note: "Maximum exploitation - Metasploit with payloads, reverse shells"
+    attacks:
+      # Metasploit Linux exploits
+      - msf_vsftpd               # vsftpd backdoor
+      - msf_distcc               # DistCC RCE
+      - msf_postgres             # PostgreSQL
+      - msf_mysql                # MySQL
+      - msf_java_rmi             # Java RMI
+      - msf_tomcat               # Tomcat WAR upload
+      - msf_telnet               # Telnet scanner
+      # Metasploit Windows exploits
+      - msf_glassfish_traversal  # GlassFish
+      - msf_struts_rce           # Struts2 OGNL
+      - msf_jenkins_script       # Jenkins
+      - msf_elasticsearch_rce    # Elasticsearch
+      - msf_manageengine         # ManageEngine
+      - msf_ms17_010             # EternalBlue
+      - msf_iis_webdav           # IIS WebDAV
+      # Windows expanded
+      - win_glassfish
+      - win_struts
+      - win_jenkins
+      - win_wamp
+      - win_elasticsearch
+      - win_manageengine
+      # NEW Metasploit modules with reverse shells
+      - noise_msf_shells         # NEW: Reverse shell payloads
+      - noise_msf_meterpreter    # NEW: Meterpreter sessions
+    targets:
+      - 10.10.40.20
+      - 10.10.40.21
+
+  # ==========================================================================
+  # PHASE 5: C2 AND EXFILTRATION (Hours 28-34)
+  # Sliver C2, DNS tunneling, ICMP tunneling, HTTP beacons
+  # ==========================================================================
+  - name: c2_exfil_maximum
+    start_hour: 28
+    end_hour: 34
+    note: "C2 beacon flood and exfiltration simulation"
+    attacks:
+      # HTTP C2
+      - c2_beacon_http
+      - c2_exfil_http
+      - noise_sliver_http        # NEW: Sliver HTTP C2 beacon
+      - noise_beacon_rapid       # NEW: 1-second beacon intervals
+      # DNS C2
+      - c2_beacon_dns
+      - exfil_dns
+      - noise_dnscat2            # NEW: dnscat2 tunneling
+      - noise_iodine             # NEW: iodine DNS tunnel
+      # ICMP tunneling
+      - exfil_icmp
+      - noise_ptunnel            # NEW: ptunnel ICMP
+      # Large data exfil
+      - noise_exfil_large_http   # NEW: Large file POST
+      - noise_exfil_large_dns    # NEW: High-volume DNS queries
+      - noise_exfil_encoded      # NEW: Base64 encoded chunks
+    targets:
+      - 10.10.40.0/24
+
+  # ==========================================================================
+  # PHASE 6: SMB/NETWORK ATTACKS (Hours 34-38)
+  # Responder, relay, pass-the-hash, Impacket suite
+  # ==========================================================================
+  - name: network_assault
+    start_hour: 34
+    end_hour: 38
+    note: "SMB relay, LLMNR poisoning, protocol abuse"
+    attacks:
+      # SMB enumeration and attacks
+      - smb_enum
+      - smb_brute
+      - smb_relay
+      - noise_impacket_psexec    # NEW: impacket-psexec
+      - noise_impacket_wmiexec   # NEW: impacket-wmiexec
+      - noise_impacket_smbexec   # NEW: impacket-smbexec
+      - noise_impacket_atexec    # NEW: impacket-atexec
+      # LLMNR/NBT-NS (VLAN 40 only)
+      - noise_responder_analyze  # NEW: Responder analyze mode
+      # SNMP
+      - snmp_enum
+      - snmp_full
+      - noise_snmp_walk_full     # NEW: snmpwalk entire MIB tree
+      # DNS attacks
+      - dns_zone_transfer
+      - dns_enum
+      - noise_dns_axfr_all       # NEW: Zone transfer all
+    targets:
+      - 10.10.40.20
+      - 10.10.40.21
+      - 10.10.40.43
+
+  # ==========================================================================
+  # PHASE 7: ACTIVE DIRECTORY ASSAULT (Hours 38-44)
+  # BloodHound, Kerberoast, AS-REP roast, DCSync, pass-the-hash
+  # ==========================================================================
+  - name: ad_assault
+    start_hour: 38
+    end_hour: 44
+    note: "Full AD attack chain - loud Kerberos/LDAP/SMB traffic"
+    attacks:
+      # Enumeration
+      - ad_ldap_enum
+      - ad_kerb_enum
+      - noise_kerbrute_users     # NEW: kerbrute userenum (large list)
+      - noise_kerbrute_passwords # NEW: kerbrute passwordspray
+      # BloodHound
+      - ad_bloodhound
+      - noise_bloodhound_all     # NEW: BloodHound all collection methods
+      # Kerberos attacks
+      - ad_kerberoast
+      - ad_asrep_roast
+      - noise_rubeus_kerberoast  # NEW: Rubeus kerberoast /nowrap
+      - noise_rubeus_asrep       # NEW: Rubeus asreproast
+      # Password attacks
+      - ad_password_spray
+      - noise_cme_spray          # NEW: CrackMapExec spray
+      # Lateral movement
+      - ad_lateral_pth
+      - noise_impacket_pth       # NEW: Pass-the-hash all services
+      - noise_cme_pth            # NEW: CrackMapExec PTH
+      # DCSync
+      - ad_dcsync
+      - noise_secretsdump        # NEW: impacket-secretsdump
+      # Zerologon check
+      - ad_zerologon
+    targets:
+      - 10.10.30.40
+      - 10.10.30.41
+
+  # ==========================================================================
+  # PHASE 8: FINAL BARRAGE (Hours 44-48)
+  # Everything at once - maximum concurrent attacks
+  # ==========================================================================
+  - name: final_barrage
+    start_hour: 44
+    end_hour: 48
+    note: "Final barrage - all attack types simultaneously"
+    attacks:
+      # Recon
+      - recon_aggressive
+      - noise_masscan
+      # Web
+      - noise_sqlmap_max
+      - noise_nuclei_full
+      - web_xss
+      - web_cmdi
+      # Brute force
+      - noise_hydra_ssh_max
+      - noise_hydra_ftp_max
+      - noise_cme_brute
+      # Exploit
+      - msf_vsftpd
+      - msf_struts_rce
+      - noise_msf_shells
+      # C2
+      - noise_sliver_http
+      - noise_beacon_rapid
+      - noise_dnscat2
+      # Network
+      - noise_impacket_psexec
+      - smb_enum
+      # API
+      - api_bola
+      - api_jwt
+      - api_full
+      # WAF bypass (still loud)
+      - waf_sqli_bypass
+      - waf_rate_flood
+    targets:
+      - 10.10.40.0/24
+
+# Timing - MINIMAL DELAYS for maximum noise
+timing:
+  min_delay_seconds: 5           # Very short delays
+  max_delay_seconds: 60          # Max 1 minute between attacks
+  cooldown_after_burst_seconds: 30
+  jitter_percent: 10             # Minimal jitter
+  ad_phase_min_delay_seconds: 10 # Faster AD attacks
+  ad_phase_max_delay_seconds: 60
+
+# All targets
+targets:
+  dvwa: { ip: "10.10.40.10", ports: [80] }
+  juice_shop: { ip: "10.10.40.10", ports: [3000] }
+  metasploitable: { ip: "10.10.40.20", ports: [21, 22, 23, 80, 445, 3306, 5432, 8180] }
+  windows: { ip: "10.10.40.21", ports: [21, 22, 80, 445, 3000, 3306, 3389, 4848, 5985, 8020, 8080, 8282, 8484, 8585, 9200] }
+  wordpress: { ip: "10.10.40.30", ports: [80, 443] }
+  crapi: { ip: "10.10.40.31", ports: [80, 443] }
+  vsftpd: { ip: "10.10.40.32", ports: [21] }
+  smtp: { ip: "10.10.40.42", ports: [25] }
+  snmpd: { ip: "10.10.40.43", ports: [161] }
+  honeypot: { ip: "10.10.40.33", ports: [8080] }
+  ad_dc: { ip: "10.10.30.40", ports: [53, 88, 135, 389, 445, 636, 5985] }
+  ad_ws: { ip: "10.10.30.41", ports: [445, 3389, 5985] }
+
+# New attack definitions required
+# These need corresponding implementations in scripts/noise_attacks.sh
+new_attacks:
+  # Scanning
+  noise_masscan:
+    script: "noise_attacks.sh"
+    function: "masscan_full"
+    description: "masscan -p1-65535 --rate=10000"
+
+  noise_nmap_allports:
+    script: "noise_attacks.sh"
+    function: "nmap_allports"
+    description: "nmap -p- -T5 -sV"
+
+  noise_nmap_scripts:
+    script: "noise_attacks.sh"
+    function: "nmap_all_scripts"
+    description: "nmap --script=all (vuln, exploit, auth)"
+
+  # Web attacks
+  noise_sqlmap_max:
+    script: "noise_attacks.sh"
+    function: "sqlmap_maximum"
+    description: "sqlmap --level=5 --risk=3 --all --batch"
+
+  noise_nuclei_full:
+    script: "noise_attacks.sh"
+    function: "nuclei_full_scan"
+    description: "nuclei -t all -severity critical,high,medium"
+
+  noise_nuclei_cves:
+    script: "noise_attacks.sh"
+    function: "nuclei_cve_scan"
+    description: "nuclei -t cves/"
+
+  noise_xss_polyglot:
+    script: "noise_attacks.sh"
+    function: "xss_polyglot"
+    description: "XSS polyglot payloads against all inputs"
+
+  noise_cmdi_all:
+    script: "noise_attacks.sh"
+    function: "cmdi_all_os"
+    description: "Command injection - Linux and Windows variants"
+
+  noise_lfi_deep:
+    script: "noise_attacks.sh"
+    function: "lfi_deep_traversal"
+    description: "LFI with 100+ ../ levels, null bytes, encoding"
+
+  noise_dirb_huge:
+    script: "noise_attacks.sh"
+    function: "dirb_huge_wordlist"
+    description: "dirb with combined wordlists (1M+ entries)"
+
+  noise_spring4shell:
+    script: "noise_attacks.sh"
+    function: "spring4shell_probe"
+    description: "CVE-2022-22965 Spring4Shell exploitation"
+
+  noise_shellshock:
+    script: "noise_attacks.sh"
+    function: "shellshock_probe"
+    description: "CVE-2014-6271 Shellshock via User-Agent/headers"
+
+  # Brute force
+  noise_hydra_ssh_max:
+    script: "noise_attacks.sh"
+    function: "hydra_ssh_maximum"
+    description: "hydra ssh -t 64 -L users.txt -P rockyou.txt"
+
+  noise_hydra_ftp_max:
+    script: "noise_attacks.sh"
+    function: "hydra_ftp_maximum"
+    description: "hydra ftp -t 64"
+
+  noise_hydra_telnet_max:
+    script: "noise_attacks.sh"
+    function: "hydra_telnet_maximum"
+    description: "hydra telnet -t 64"
+
+  noise_hydra_mysql_max:
+    script: "noise_attacks.sh"
+    function: "hydra_mysql_maximum"
+    description: "hydra mysql -t 64"
+
+  noise_hydra_rdp_max:
+    script: "noise_attacks.sh"
+    function: "hydra_rdp_maximum"
+    description: "hydra rdp -t 64"
+
+  noise_medusa_parallel:
+    script: "noise_attacks.sh"
+    function: "medusa_parallel_brute"
+    description: "medusa -T 64 multi-service brute"
+
+  noise_cme_brute:
+    script: "noise_attacks.sh"
+    function: "cme_smb_brute"
+    description: "crackmapexec smb --pass-file rockyou.txt"
+
+  noise_patator_http:
+    script: "noise_attacks.sh"
+    function: "patator_http_brute"
+    description: "patator http_fuzz url=FILE0"
+
+  # Metasploit with shells
+  noise_msf_shells:
+    script: "noise_attacks.sh"
+    function: "msf_reverse_shells"
+    description: "Metasploit exploits with reverse TCP shells"
+
+  noise_msf_meterpreter:
+    script: "noise_attacks.sh"
+    function: "msf_meterpreter_sessions"
+    description: "Metasploit with Meterpreter payloads"
+
+  # C2 frameworks
+  noise_sliver_http:
+    script: "noise_attacks.sh"
+    function: "sliver_http_beacon"
+    description: "Sliver C2 HTTP beacon"
+
+  noise_beacon_rapid:
+    script: "noise_attacks.sh"
+    function: "beacon_rapid_1s"
+    description: "HTTP beacon every 1 second"
+
+  noise_dnscat2:
+    script: "noise_attacks.sh"
+    function: "dnscat2_tunnel"
+    description: "dnscat2 DNS C2 tunnel"
+
+  noise_iodine:
+    script: "noise_attacks.sh"
+    function: "iodine_dns_tunnel"
+    description: "iodine DNS tunnel"
+
+  noise_ptunnel:
+    script: "noise_attacks.sh"
+    function: "ptunnel_icmp"
+    description: "ptunnel ICMP tunneling"
+
+  # Exfiltration
+  noise_exfil_large_http:
+    script: "noise_attacks.sh"
+    function: "exfil_large_http"
+    description: "POST 10MB+ files to target"
+
+  noise_exfil_large_dns:
+    script: "noise_attacks.sh"
+    function: "exfil_large_dns"
+    description: "High-volume DNS TXT queries"
+
+  noise_exfil_encoded:
+    script: "noise_attacks.sh"
+    function: "exfil_encoded_chunks"
+    description: "Base64 encoded data exfiltration"
+
+  # Impacket suite
+  noise_impacket_psexec:
+    script: "noise_attacks.sh"
+    function: "impacket_psexec"
+    description: "impacket-psexec lateral movement"
+
+  noise_impacket_wmiexec:
+    script: "noise_attacks.sh"
+    function: "impacket_wmiexec"
+    description: "impacket-wmiexec lateral movement"
+
+  noise_impacket_smbexec:
+    script: "noise_attacks.sh"
+    function: "impacket_smbexec"
+    description: "impacket-smbexec lateral movement"
+
+  noise_impacket_atexec:
+    script: "noise_attacks.sh"
+    function: "impacket_atexec"
+    description: "impacket-atexec task scheduler"
+
+  noise_impacket_pth:
+    script: "noise_attacks.sh"
+    function: "impacket_pth_all"
+    description: "Pass-the-hash via all Impacket tools"
+
+  noise_secretsdump:
+    script: "noise_attacks.sh"
+    function: "impacket_secretsdump"
+    description: "impacket-secretsdump DCSync"
+
+  # Responder
+  noise_responder_analyze:
+    script: "noise_attacks.sh"
+    function: "responder_analyze"
+    description: "Responder -A analyze mode (passive)"
+
+  # SNMP
+  noise_snmp_walk_full:
+    script: "noise_attacks.sh"
+    function: "snmp_walk_full_mib"
+    description: "snmpwalk entire MIB tree"
+
+  # DNS
+  noise_dns_axfr_all:
+    script: "noise_attacks.sh"
+    function: "dns_axfr_all_targets"
+    description: "Zone transfer attempts all targets"
+
+  # AD attacks
+  noise_kerbrute_users:
+    script: "noise_attacks.sh"
+    function: "kerbrute_userenum"
+    description: "kerbrute userenum with large wordlist"
+
+  noise_kerbrute_passwords:
+    script: "noise_attacks.sh"
+    function: "kerbrute_passwordspray"
+    description: "kerbrute passwordspray"
+
+  noise_bloodhound_all:
+    script: "noise_attacks.sh"
+    function: "bloodhound_all_methods"
+    description: "BloodHound -c All"
+
+  noise_rubeus_kerberoast:
+    script: "noise_attacks.sh"
+    function: "rubeus_kerberoast"
+    description: "Rubeus kerberoast /nowrap"
+
+  noise_rubeus_asrep:
+    script: "noise_attacks.sh"
+    function: "rubeus_asreproast"
+    description: "Rubeus asreproast"
+
+  noise_cme_spray:
+    script: "noise_attacks.sh"
+    function: "cme_password_spray"
+    description: "CrackMapExec password spray"
+
+  noise_cme_pth:
+    script: "noise_attacks.sh"
+    function: "cme_pass_the_hash"
+    description: "CrackMapExec pass-the-hash"

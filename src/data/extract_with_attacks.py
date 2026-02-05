@@ -191,8 +191,8 @@ class AttackCorrelator:
 
         # Pre-compute traffic arrays for fast masking
         traffic_ts = df['@timestamp'].values
-        traffic_src = df['src_ip'].astype(str).values
-        traffic_dest = df['dest_ip'].astype(str).values
+        traffic_src = df['src_ip'].fillna('').astype(str).values
+        traffic_dest = df['dest_ip'].fillna('').astype(str).values
 
         # Track which rows have been matched (for overlap handling)
         # When multiple attacks overlap, prefer exact port match
