@@ -69,6 +69,8 @@ phases:
       - noise_masscan             # NEW: masscan full port range
       - noise_nmap_allports       # NEW: nmap -p- -T5
       - noise_nmap_scripts        # NEW: nmap --script=all
+      - noise_httpx_probe         # NEW: httpx HTTP probing
+      - noise_httpx_targets       # NEW: httpx all targets
     targets:
       - 10.10.40.0/24
 
@@ -90,9 +92,12 @@ phases:
       - web_xss
       - juice_xss
       - noise_xss_polyglot        # NEW: XSS polyglot payloads
+      - noise_dalfox_scan         # NEW: dalfox XSS scanner
+      - noise_dalfox_pipe         # NEW: dalfox piped scanning
       # Command injection
       - web_cmdi
       - noise_cmdi_all            # NEW: All OS command variants
+      - noise_commix_scan         # NEW: commix injection scanner
       # File inclusion/traversal
       - web_lfi
       - web_path_traversal
@@ -101,6 +106,9 @@ phases:
       - web_dirbusting
       - juice_dirbusting
       - noise_dirb_huge           # NEW: dirb with huge wordlist
+      - noise_ffuf_dirs           # NEW: ffuf fast directory fuzzing
+      - noise_ffuf_params         # NEW: ffuf parameter fuzzing
+      - noise_feroxbuster         # NEW: feroxbuster recursive scan
       # Nikto full scan
       - nikto_dvwa
       - nikto_juice
@@ -295,6 +303,15 @@ phases:
       - noise_secretsdump        # NEW: impacket-secretsdump
       # Zerologon check
       - ad_zerologon
+      # AD CS attacks (Certipy)
+      - noise_certipy_find        # NEW: Certipy AD CS enumeration
+      - noise_certipy_esc1        # NEW: Certipy ESC1 attack
+      - noise_certipy_shadow      # NEW: Certipy shadow credentials
+      # Authentication coercion
+      - noise_coercer_scan        # NEW: Coercer scan for vulnerable methods
+      - noise_coercer_coerce      # NEW: Coercer coerce attempt
+      # LDAP enumeration
+      - noise_ldapdomaindump      # NEW: ldapdomaindump full enum
     targets:
       - 10.10.30.40
       - 10.10.30.41
@@ -338,6 +355,14 @@ phases:
       # WAF bypass (still loud)
       - waf_sqli_bypass
       - waf_rate_flood
+      # New tools final burst
+      - noise_ffuf_dirs
+      - noise_feroxbuster
+      - noise_dalfox_scan
+      - noise_commix_scan
+      - noise_certipy_find
+      - noise_coercer_coerce
+      - noise_httpx_targets
     targets:
       - 10.10.40.0/24
 
@@ -608,3 +633,86 @@ new_attacks:
     script: "noise_attacks.sh"
     function: "cme_pass_the_hash"
     description: "CrackMapExec pass-the-hash"
+
+  # Certipy AD CS attacks
+  noise_certipy_find:
+    script: "noise_attacks.sh"
+    function: "certipy_find"
+    description: "Certipy AD CS enumeration"
+
+  noise_certipy_esc1:
+    script: "noise_attacks.sh"
+    function: "certipy_esc1"
+    description: "Certipy ESC1 certificate attack"
+
+  noise_certipy_shadow:
+    script: "noise_attacks.sh"
+    function: "certipy_shadow"
+    description: "Certipy shadow credentials attack"
+
+  # ffuf web fuzzing
+  noise_ffuf_dirs:
+    script: "noise_attacks.sh"
+    function: "ffuf_dirs"
+    description: "ffuf fast directory fuzzing"
+
+  noise_ffuf_params:
+    script: "noise_attacks.sh"
+    function: "ffuf_params"
+    description: "ffuf parameter fuzzing"
+
+  noise_ffuf_vhost:
+    script: "noise_attacks.sh"
+    function: "ffuf_vhost"
+    description: "ffuf virtual host fuzzing"
+
+  # feroxbuster
+  noise_feroxbuster:
+    script: "noise_attacks.sh"
+    function: "feroxbuster_recursive"
+    description: "feroxbuster recursive directory scan"
+
+  # dalfox XSS
+  noise_dalfox_scan:
+    script: "noise_attacks.sh"
+    function: "dalfox_scan"
+    description: "dalfox XSS vulnerability scanner"
+
+  noise_dalfox_pipe:
+    script: "noise_attacks.sh"
+    function: "dalfox_pipe"
+    description: "dalfox piped multi-endpoint scan"
+
+  # commix command injection
+  noise_commix_scan:
+    script: "noise_attacks.sh"
+    function: "commix_scan"
+    description: "commix command injection scanner"
+
+  # Coercer authentication coercion
+  noise_coercer_scan:
+    script: "noise_attacks.sh"
+    function: "coercer_scan"
+    description: "Coercer scan for coercible methods"
+
+  noise_coercer_coerce:
+    script: "noise_attacks.sh"
+    function: "coercer_coerce"
+    description: "Coercer authentication coercion"
+
+  # httpx probing
+  noise_httpx_probe:
+    script: "noise_attacks.sh"
+    function: "httpx_probe"
+    description: "httpx HTTP service probing"
+
+  noise_httpx_targets:
+    script: "noise_attacks.sh"
+    function: "httpx_targets"
+    description: "httpx all targets probe"
+
+  # ldapdomaindump
+  noise_ldapdomaindump:
+    script: "noise_attacks.sh"
+    function: "ldapdomaindump_full"
+    description: "ldapdomaindump full LDAP enumeration"
