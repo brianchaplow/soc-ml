@@ -184,6 +184,168 @@ install_sharphound() {
     fi
 }
 
+install_certipy() {
+    log_info "Installing Certipy (AD CS attacks)..."
+    pip3 install certipy-ad 2>/dev/null || pipx install certipy-ad 2>/dev/null || true
+    log_success "Certipy installed"
+}
+
+install_ffuf() {
+    log_info "Installing ffuf (fast web fuzzer)..."
+
+    if command -v ffuf &> /dev/null; then
+        log_warn "ffuf already installed"
+    else
+        # Install via Go
+        go install github.com/ffuf/ffuf/v2@latest 2>/dev/null || true
+
+        if [[ -f /root/go/bin/ffuf ]]; then
+            ln -sf /root/go/bin/ffuf /usr/local/bin/ffuf
+        fi
+
+        # Fallback to apt
+        if ! command -v ffuf &> /dev/null; then
+            apt-get install -y ffuf 2>/dev/null || true
+        fi
+    fi
+
+    log_success "ffuf installed"
+}
+
+install_havoc() {
+    log_info "Installing Havoc C2..."
+
+    if [[ -d /opt/havoc ]]; then
+        log_warn "Havoc already exists at /opt/havoc"
+    else
+        # Install dependencies
+        apt-get install -y git build-essential apt-utils cmake libfontconfig1 \
+            libglu1-mesa-dev libgtest-dev libspdlog-dev libboost-all-dev \
+            libncurses5-dev libgdbm-dev libssl-dev libreadline-dev libffi-dev \
+            libsqlite3-dev libbz2-dev mesa-common-dev qtbase5-dev qtchooser \
+            qt5-qmake qtbase5-dev-tools libqt5websockets5 libqt5websockets5-dev \
+            qtdeclarative5-dev golang-go qtbase5-dev libqt5websockets5-dev \
+            python3-dev libboost-all-dev mingw-w64 nasm 2>/dev/null || true
+
+        git clone https://github.com/HavocFramework/Havoc.git /opt/havoc
+        cd /opt/havoc
+
+        # Build teamserver
+        cd teamserver
+        go mod download golang.org/x/sys
+        go mod download github.com/ugorji/go
+        cd ..
+
+        # Build client
+        make ts-build 2>/dev/null || log_warn "Havoc teamserver build may need manual completion"
+        make client-build 2>/dev/null || log_warn "Havoc client build may need manual completion"
+    fi
+
+    log_success "Havoc installed to /opt/havoc/"
+}
+
+install_hashcat() {
+    log_info "Installing hashcat..."
+    apt-get install -y hashcat hashcat-utils 2>/dev/null || true
+    log_success "hashcat installed"
+}
+
+install_coercer() {
+    log_info "Installing Coercer (Windows auth coercion)..."
+    pip3 install coercer 2>/dev/null || pipx install coercer 2>/dev/null || true
+    log_success "Coercer installed"
+}
+
+install_petitpotam() {
+    log_info "Installing PetitPotam..."
+
+    if [[ -d /opt/PetitPotam ]]; then
+        log_warn "PetitPotam already exists"
+    else
+        git clone https://github.com/topotam/PetitPotam.git /opt/PetitPotam
+    fi
+
+    log_success "PetitPotam installed to /opt/PetitPotam/"
+}
+
+install_ldapdomaindump() {
+    log_info "Installing ldapdomaindump..."
+    pip3 install ldapdomaindump 2>/dev/null || pipx install ldapdomaindump 2>/dev/null || true
+    log_success "ldapdomaindump installed"
+}
+
+install_httpx() {
+    log_info "Installing httpx (HTTP toolkit)..."
+
+    if command -v httpx &> /dev/null; then
+        log_warn "httpx already installed"
+    else
+        go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest 2>/dev/null || true
+
+        if [[ -f /root/go/bin/httpx ]]; then
+            ln -sf /root/go/bin/httpx /usr/local/bin/httpx
+        fi
+    fi
+
+    log_success "httpx installed"
+}
+
+install_subfinder() {
+    log_info "Installing subfinder (subdomain discovery)..."
+
+    if command -v subfinder &> /dev/null; then
+        log_warn "subfinder already installed"
+    else
+        go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest 2>/dev/null || true
+
+        if [[ -f /root/go/bin/subfinder ]]; then
+            ln -sf /root/go/bin/subfinder /usr/local/bin/subfinder
+        fi
+    fi
+
+    log_success "subfinder installed"
+}
+
+install_feroxbuster() {
+    log_info "Installing feroxbuster..."
+    apt-get install -y feroxbuster 2>/dev/null || true
+    log_success "feroxbuster installed"
+}
+
+install_cewl() {
+    log_info "Installing CeWL (custom wordlist generator)..."
+    apt-get install -y cewl 2>/dev/null || true
+    log_success "CeWL installed"
+}
+
+install_name_that_hash() {
+    log_info "Installing name-that-hash..."
+    pip3 install name-that-hash 2>/dev/null || pipx install name-that-hash 2>/dev/null || true
+    log_success "name-that-hash installed"
+}
+
+install_dalfox() {
+    log_info "Installing dalfox (XSS scanner)..."
+
+    if command -v dalfox &> /dev/null; then
+        log_warn "dalfox already installed"
+    else
+        go install github.com/hahwul/dalfox/v2@latest 2>/dev/null || true
+
+        if [[ -f /root/go/bin/dalfox ]]; then
+            ln -sf /root/go/bin/dalfox /usr/local/bin/dalfox
+        fi
+    fi
+
+    log_success "dalfox installed"
+}
+
+install_commix() {
+    log_info "Installing commix (command injection)..."
+    apt-get install -y commix 2>/dev/null || true
+    log_success "commix installed"
+}
+
 setup_wordlists() {
     log_info "Setting up wordlists..."
 
@@ -228,6 +390,17 @@ verify_tools() {
         "evil-winrm"
         "nuclei"
         "kerbrute"
+        "certipy"
+        "ffuf"
+        "hashcat"
+        "coercer"
+        "httpx"
+        "subfinder"
+        "feroxbuster"
+        "cewl"
+        "nth"
+        "dalfox"
+        "commix"
     )
 
     MISSING=()
@@ -245,6 +418,8 @@ verify_tools() {
     [[ -d /opt/dnscat2 ]] && log_success "dnscat2: OK" || log_error "dnscat2: MISSING"
     [[ -f /opt/rubeus/Rubeus.exe ]] && log_success "Rubeus: OK" || log_error "Rubeus: MISSING"
     [[ -d /opt/sharphound ]] && log_success "SharpHound: OK" || log_error "SharpHound: MISSING"
+    [[ -d /opt/havoc ]] && log_success "Havoc C2: OK" || log_error "Havoc C2: MISSING"
+    [[ -d /opt/PetitPotam ]] && log_success "PetitPotam: OK" || log_error "PetitPotam: MISSING"
 
     if [[ ${#MISSING[@]} -gt 0 ]]; then
         log_warn "Some tools are missing. Campaign may have reduced functionality."
@@ -260,25 +435,54 @@ print_summary() {
     echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
     echo ""
     echo "Installed tools:"
-    echo "  - Nuclei (template-based scanner)"
-    echo "  - Kerbrute (Kerberos enumeration)"
-    echo "  - Sliver C2 (command & control)"
-    echo "  - dnscat2 (DNS tunneling)"
-    echo "  - iodine (DNS tunneling)"
-    echo "  - ptunnel-ng (ICMP tunneling)"
-    echo "  - Rubeus (Kerberos attacks)"
-    echo "  - SharpHound (BloodHound collector)"
+    echo ""
+    echo "  C2 Frameworks:"
+    echo "    - Sliver C2 (command & control)"
+    echo "    - Havoc C2 (Cobalt Strike alternative)"
+    echo ""
+    echo "  Scanning & Enumeration:"
+    echo "    - Nuclei (template-based scanner)"
+    echo "    - ffuf (fast web fuzzer)"
+    echo "    - feroxbuster (recursive content discovery)"
+    echo "    - httpx (HTTP probing toolkit)"
+    echo "    - subfinder (subdomain discovery)"
+    echo "    - dalfox (XSS scanner)"
+    echo ""
+    echo "  Active Directory:"
+    echo "    - Kerbrute (Kerberos enumeration)"
+    echo "    - Certipy (AD CS attacks)"
+    echo "    - Coercer (auth coercion)"
+    echo "    - PetitPotam (NTLM relay)"
+    echo "    - ldapdomaindump (LDAP enum)"
+    echo "    - BloodHound + SharpHound"
+    echo "    - Rubeus (Kerberos attacks)"
+    echo ""
+    echo "  Tunneling:"
+    echo "    - dnscat2 (DNS tunneling)"
+    echo "    - iodine (DNS tunneling)"
+    echo "    - ptunnel-ng (ICMP tunneling)"
+    echo ""
+    echo "  Password/Hash:"
+    echo "    - hashcat (GPU cracking)"
+    echo "    - name-that-hash (hash identification)"
+    echo "    - CeWL (custom wordlists)"
+    echo ""
+    echo "  Exploitation:"
+    echo "    - commix (command injection)"
     echo ""
     echo "Tool locations:"
     echo "  - /opt/dnscat2/"
     echo "  - /opt/ptunnel-ng/"
     echo "  - /opt/rubeus/"
     echo "  - /opt/sharphound/"
+    echo "  - /opt/havoc/"
+    echo "  - /opt/PetitPotam/"
     echo ""
     echo "Next steps:"
     echo "  1. Start BloodHound: neo4j console & bloodhound"
     echo "  2. Generate Sliver implant: sliver-server"
-    echo "  3. Run campaign: ./campaigns/runner.sh --config campaigns/configs/maximum_noise_48h.yaml"
+    echo "  3. Start Havoc: cd /opt/havoc && ./havoc server"
+    echo "  4. Run campaign: ./campaigns/runner.sh --config campaigns/configs/maximum_noise_48h.yaml"
     echo ""
 }
 
@@ -300,6 +504,20 @@ main() {
     install_ptunnel
     install_rubeus
     install_sharphound
+    install_certipy
+    install_ffuf
+    install_havoc
+    install_hashcat
+    install_coercer
+    install_petitpotam
+    install_ldapdomaindump
+    install_httpx
+    install_subfinder
+    install_feroxbuster
+    install_cewl
+    install_name_that_hash
+    install_dalfox
+    install_commix
     setup_wordlists
     verify_tools
     print_summary
