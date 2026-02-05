@@ -317,11 +317,53 @@ phases:
       - 10.10.30.41
 
   # ==========================================================================
-  # PHASE 8: FINAL BARRAGE (Hours 44-48)
+  # PHASE 8: GAP ATTACKS - Underrepresented Patterns (Hours 44-47)
+  # C2 simulation, encrypted channels, cryptomining, anomalies
+  # ==========================================================================
+  - name: gap_attacks
+    start_hour: 44
+    end_hour: 47
+    note: "Gap-filling attacks - C2, mining, anomalous patterns"
+    attacks:
+      # C2 Framework Simulation
+      - gap_cobalt_beacon         # NEW: Cobalt Strike beacon pattern
+      - gap_cobalt_stager         # NEW: CS stager download
+      - gap_meterpreter_https     # NEW: Meterpreter HTTPS
+      - gap_meterpreter_tcp       # NEW: Meterpreter reverse TCP
+      - gap_empire_stager         # NEW: PowerShell Empire
+      - gap_mythic_c2             # NEW: Mythic C2 HTTP
+      - gap_havoc_demon           # NEW: Havoc C2
+      # Encrypted Channel Abuse
+      - gap_tls_nonstandard       # NEW: TLS on unusual ports
+      - gap_tls_anomalies         # NEW: TLS cert/version anomalies
+      - gap_tls_jitter            # NEW: TLS beaconing patterns
+      # Protocol Abuse
+      - gap_http2_flood           # NEW: HTTP/2 multiplexing abuse
+      - gap_websocket_abuse       # NEW: WebSocket attacks
+      # Cryptomining Simulation
+      - gap_stratum_mining        # NEW: Stratum protocol
+      - gap_xmrig_pattern         # NEW: XMRig patterns
+      - gap_coinhive_pattern      # NEW: Browser mining
+      # Advanced Beaconing
+      - gap_beacon_base64         # NEW: Base64 exfil beacon
+      - gap_beacon_dns_txt        # NEW: DNS TXT beaconing
+      - gap_beacon_icmp           # NEW: ICMP covert channel
+      - gap_beacon_headers        # NEW: Header covert channel
+      # Anomalous Traffic
+      - gap_large_posts           # NEW: Large POST exfil
+      - gap_high_frequency        # NEW: Rapid requests
+      - gap_ua_anomalies          # NEW: Suspicious User-Agents
+      - gap_exe_downloads         # NEW: Executable downloads
+      - gap_staged_download       # NEW: Staged payload pattern
+    targets:
+      - 10.10.40.0/24
+
+  # ==========================================================================
+  # PHASE 9: FINAL BARRAGE (Hours 47-48)
   # Everything at once - maximum concurrent attacks
   # ==========================================================================
   - name: final_barrage
-    start_hour: 44
+    start_hour: 47
     end_hour: 48
     note: "Final barrage - all attack types simultaneously"
     attacks:
@@ -363,6 +405,12 @@ phases:
       - noise_certipy_find
       - noise_coercer_coerce
       - noise_httpx_targets
+      # Gap attacks in final barrage
+      - gap_cobalt_beacon
+      - gap_meterpreter_https
+      - gap_stratum_mining
+      - gap_beacon_dns_txt
+      - gap_ua_anomalies
     targets:
       - 10.10.40.0/24
 
@@ -716,3 +764,133 @@ new_attacks:
     script: "noise_attacks.sh"
     function: "ldapdomaindump_full"
     description: "ldapdomaindump full LDAP enumeration"
+
+  #############################################################################
+  # GAP ATTACKS - Filling underrepresented attack patterns
+  #############################################################################
+
+  # C2 Framework Simulation
+  gap_cobalt_beacon:
+    script: "gap_attacks.sh"
+    function: "cobalt_strike_beacon"
+    description: "Cobalt Strike beacon simulation"
+
+  gap_cobalt_stager:
+    script: "gap_attacks.sh"
+    function: "cobalt_strike_stager"
+    description: "Cobalt Strike stager download pattern"
+
+  gap_meterpreter_https:
+    script: "gap_attacks.sh"
+    function: "meterpreter_https"
+    description: "Meterpreter HTTPS C2 simulation"
+
+  gap_meterpreter_tcp:
+    script: "gap_attacks.sh"
+    function: "meterpreter_reverse_tcp"
+    description: "Meterpreter reverse TCP pattern"
+
+  gap_empire_stager:
+    script: "gap_attacks.sh"
+    function: "empire_stager"
+    description: "PowerShell Empire stager simulation"
+
+  gap_mythic_c2:
+    script: "gap_attacks.sh"
+    function: "mythic_c2_http"
+    description: "Mythic C2 HTTP communication"
+
+  gap_havoc_demon:
+    script: "gap_attacks.sh"
+    function: "havoc_demon"
+    description: "Havoc C2 Demon simulation"
+
+  # Encrypted Channel Abuse
+  gap_tls_nonstandard:
+    script: "gap_attacks.sh"
+    function: "tls_nonstandard_ports"
+    description: "TLS connections on non-standard ports"
+
+  gap_tls_anomalies:
+    script: "gap_attacks.sh"
+    function: "tls_cert_anomalies"
+    description: "TLS with anomalous behavior"
+
+  gap_tls_jitter:
+    script: "gap_attacks.sh"
+    function: "tls_beaconing_jitter"
+    description: "TLS beaconing with jitter patterns"
+
+  # Protocol Abuse
+  gap_http2_flood:
+    script: "gap_attacks.sh"
+    function: "http2_flood"
+    description: "HTTP/2 multiplexing flood"
+
+  gap_websocket_abuse:
+    script: "gap_attacks.sh"
+    function: "websocket_abuse"
+    description: "WebSocket upgrade abuse"
+
+  # Cryptomining Simulation
+  gap_stratum_mining:
+    script: "gap_attacks.sh"
+    function: "stratum_mining"
+    description: "Stratum mining protocol simulation"
+
+  gap_xmrig_pattern:
+    script: "gap_attacks.sh"
+    function: "xmrig_pattern"
+    description: "XMRig miner traffic pattern"
+
+  gap_coinhive_pattern:
+    script: "gap_attacks.sh"
+    function: "coinhive_pattern"
+    description: "Browser-based mining pattern"
+
+  # Advanced Beaconing
+  gap_beacon_base64:
+    script: "gap_attacks.sh"
+    function: "beacon_base64_exfil"
+    description: "Base64 encoded beacon exfiltration"
+
+  gap_beacon_dns_txt:
+    script: "gap_attacks.sh"
+    function: "beacon_dns_txt"
+    description: "DNS TXT record beaconing"
+
+  gap_beacon_icmp:
+    script: "gap_attacks.sh"
+    function: "beacon_icmp_covert"
+    description: "ICMP covert channel beaconing"
+
+  gap_beacon_headers:
+    script: "gap_attacks.sh"
+    function: "beacon_header_covert"
+    description: "HTTP header covert channel"
+
+  # Anomalous Traffic
+  gap_large_posts:
+    script: "gap_attacks.sh"
+    function: "large_post_requests"
+    description: "Anomalously large POST requests"
+
+  gap_high_frequency:
+    script: "gap_attacks.sh"
+    function: "high_frequency_requests"
+    description: "High-frequency automated requests"
+
+  gap_ua_anomalies:
+    script: "gap_attacks.sh"
+    function: "user_agent_anomalies"
+    description: "Suspicious User-Agent patterns"
+
+  gap_exe_downloads:
+    script: "gap_attacks.sh"
+    function: "exe_download_pattern"
+    description: "Executable download patterns"
+
+  gap_staged_download:
+    script: "gap_attacks.sh"
+    function: "staged_download"
+    description: "Staged payload download pattern"
