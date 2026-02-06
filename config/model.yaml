@@ -17,6 +17,8 @@ models:
     - name: "random_forest"
     - name: "lightgbm"
     - name: "logistic_regression"
+    - name: "knn"
+    - name: "mlp"
 
 # -----------------------------------------------------------------------------
 # XGBoost Hyperparameters
@@ -94,6 +96,41 @@ lightgbm:
   subsample: 0.8
   colsample_bytree: 0.8
   is_unbalance: true
+  random_state: 42
+
+# -----------------------------------------------------------------------------
+# KNN (comparison)
+# -----------------------------------------------------------------------------
+knn:
+  n_neighbors: 7
+  algorithm: "ball_tree"
+  weights: "distance"
+  metric: "minkowski"
+  n_jobs: -1
+
+# -----------------------------------------------------------------------------
+# MLP Neural Network (comparison)
+# -----------------------------------------------------------------------------
+mlp:
+  # Architecture
+  hidden_layers: [256, 128, 64]
+  dropout: 0.3
+  activation: "relu"
+  batch_norm: true
+
+  # Training
+  learning_rate: 0.001
+  batch_size: 256
+  max_epochs: 100
+  early_stopping_patience: 10
+
+  # GPU
+  device: "auto"  # "auto", "cuda", "cpu"
+
+  # Class imbalance
+  class_weight: "balanced"
+
+  # Reproducibility
   random_state: 42
 
 # -----------------------------------------------------------------------------
