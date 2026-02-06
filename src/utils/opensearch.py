@@ -404,7 +404,7 @@ class SOCOpenSearchClient:
                 "orig_ip_bytes", "resp_ip_bytes", "missed_bytes"
             ])
 
-        index = self.config.get('indices', {}).get('alerts', 'fluentbit-default')
+        index = self.config.get('indices', {}).get('zeek', 'zeek')
         records = list(self.scroll_search(
             index=index,
             query=query,
@@ -479,26 +479,18 @@ if __name__ == "__main__":
         print("✅ Connection successful!")
         
         # Show index counts
-        print("\nIndex counts:")
+        print("\nSuricata index counts:")
         for event_type in ['alert', 'flow', 'http', 'dns']:
             count = client.get_index_count(
-                'fluentbit-default',
+                'suricata',
                 {"term": {"event_type": event_type}}
             )
             print(f"  {event_type}: {count:,}")
 
         # Zeek conn count
         zeek_count = client.get_index_count(
-            'fluentbit-default',
-            {"bool": {
-                "must": [
-                    {"term": {"source": "zeek"}},
-                    {"exists": {"field": "uid"}}
-                ],
-                "must_not": [
-                    {"exists": {"field": "event_type"}}
-                ]
-            }}
+            'zeek',
+            {"exists": {"field": "uid"}}
         )
         print(f"  zeek_conn: {zeek_count:,}")
     else:

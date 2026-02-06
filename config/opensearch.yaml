@@ -14,15 +14,21 @@ connection:
   timeout: 60
 
 indices:
-  # Primary alert index
-  alerts: "fluentbit-default"
-  
+  # Suricata alerts (new dedicated index, was fluentbit-default)
+  alerts: "suricata"
+
+  # Zeek conn.log (new dedicated index, was fluentbit-default)
+  zeek: "zeek"
+
+  # Legacy index (pre-2026-02-06 data)
+  legacy: "fluentbit-default"
+
   # Web application logs (enriched)
   apache: "apache-parsed-v2"
-  
+
   # Windows endpoint telemetry
   windows: "winlog-*"
-  
+
   # Honeypot data
   honeypot: "honeypot-credentials"
 
@@ -49,8 +55,8 @@ date_range:
 zeek:
   enabled: true
   correlation:
-    time_tolerance: 2.0       # seconds for 5-tuple join
-    max_records_multiplier: 3  # pull 3x Suricata records of Zeek data
+    time_tolerance: 10.0      # seconds for 5-tuple join (Zeek @timestamp has ~6s ingestion delay)
+    max_records_multiplier: 5  # pull 5x Suricata records of Zeek data
   conn_fields:
     - "@timestamp"
     - "uid"
