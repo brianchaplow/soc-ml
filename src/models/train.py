@@ -410,6 +410,9 @@ class ModelTrainer:
                     # Anomaly detector — train on benign only, evaluate differently
                     normal_mask = y_train == 0
                     self.train_anomaly_detector(X_train[normal_mask])
+                    # Set self.model so trained_models captures the right object
+                    self.model = self.anomaly_model
+                    self.model_type = 'isolation_forest'
 
                 # Evaluate
                 if model_key == 'isolation_forest':
@@ -1385,6 +1388,16 @@ class ModelTrainer:
         elif self.model_type == 'mlp':
             model_path = os.path.join(path, 'model.pt')
             self.model.save(path)  # MLPTrainer handles its own saving
+        elif self.model_type == 'isolation_forest':
+            import pickle
+            model_path = os.path.join(path, 'model.pkl')
+            with open(model_path, 'wb') as f:
+                pickle.dump(self.model, f)
+            # Also save scaler used during anomaly training
+            if hasattr(self, 'anomaly_scaler') and self.anomaly_scaler is not None:
+                scaler_path = os.path.join(path, 'anomaly_scaler.pkl')
+                with open(scaler_path, 'wb') as f:
+                    pickle.dump(self.anomaly_scaler, f)
         else:
             import pickle
             model_path = os.path.join(path, 'model.pkl')
@@ -1477,6 +1490,17 @@ class ModelTrainer:
         elif trainer.model_type == 'mlp':
             from src.models.mlp import MLPTrainer
             trainer.model = MLPTrainer.load(path)
+        elif trainer.model_type == 'isolation_forest':
+            import pickle
+            model_path = os.path.join(path, 'model.pkl')
+            with open(model_path, 'rb') as f:
+                trainer.model = pickle.load(f)
+            trainer.anomaly_model = trainer.model
+            # Load scaler if saved
+            scaler_path = os.path.join(path, 'anomaly_scaler.pkl')
+            if os.path.exists(scaler_path):
+                with open(scaler_path, 'rb') as f:
+                    trainer.anomaly_scaler = pickle.load(f)
         else:
             import pickle
             model_path = os.path.join(path, 'model.pkl')

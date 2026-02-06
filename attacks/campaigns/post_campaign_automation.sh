@@ -179,11 +179,12 @@ train_model() {
     eval "$(conda shell.bash hook)"
     conda activate "$CONDA_ENV"
 
-    discord_info "Model Training" "Training XGBoost model on ground-truth labeled data...\n\nThis may take 15-30 minutes depending on dataset size."
+    discord_info "Model Training" "Training all models (XGBoost, LightGBM, RF, LR, KNN, MLP, IsolationForest) on ground-truth labeled data...\n\nThis may take 15-30 minutes depending on dataset size."
 
-    # Run training
+    # Train all models for comparison
     python -m src.models.train \
         --task binary \
+        --compare \
         --input "$data_file" \
         2>&1 | tee -a "$LOG_FILE"
 
@@ -221,6 +222,62 @@ with open('$model_dir/metadata.json') as f:
     log "Training complete: $model_dir"
 
     echo "$model_dir"
+}
+
+#=============================================================================
+# DETECTION COMPARISON
+#=============================================================================
+
+compare_detections() {
+    local data_file="$1"
+    local model_dir="$PROJECT_DIR/models"
+
+    log "=== Running Multi-Model Detection Comparison ==="
+
+    cd "$PROJECT_DIR"
+
+    eval "$(conda shell.bash hook)"
+    conda activate "$CONDA_ENV"
+
+    discord_info "Detection Comparison" \
+        "Comparing all models vs Suricata rules...\n\nThis includes SHAP analysis and HTML report generation."
+
+    python -m src.analysis.detection_comparison \
+        --data "$data_file" \
+        --model-dir "$model_dir" \
+        --all-models \
+        --output results/comparison \
+        --threshold 0.5 \
+        2>&1 | tee -a "$LOG_FILE"
+
+    if [[ $? -ne 0 ]]; then
+        discord_error "Detection Comparison" "Comparison failed! Check logs at $LOG_FILE"
+        return 1
+    fi
+
+    # Find latest report
+    local latest_json=$(ls -t results/comparison/detection_comparison_*.json 2>/dev/null | head -1)
+    local latest_html=$(ls -t results/comparison/report_*.html 2>/dev/null | head -1)
+
+    if [[ -n "$latest_json" ]]; then
+        # Extract summary for Discord
+        local summary
+        summary=$(python -c "
+import json
+with open('$latest_json') as f:
+    data = json.load(f)
+rankings = data.get('cross_model', {}).get('rankings', {}).get('by_pr_auc', [])
+blind = data.get('cross_model', {}).get('blind_spots', {}).get('total', 0)
+print(f'**Best Model:** {rankings[0][\"model\"]} (PR-AUC: {rankings[0][\"pr_auc\"]:.4f})' if rankings else 'No rankings')
+print(f'**Models Compared:** {len(data[\"metadata\"][\"models_compared\"])}')
+print(f'**Blind Spots:** {blind}')
+" 2>/dev/null)
+
+        discord_success "Detection Comparison Complete" \
+            "$summary\n\nJSON: \`$latest_json\`\nHTML: \`$latest_html\`"
+    fi
+
+    log "Detection comparison complete"
 }
 
 #=============================================================================
@@ -268,10 +325,14 @@ main() {
     # Step 2: Extract data
     local data_file=$(extract_data)
 
-    # Step 3: Train model
-    local model_dir=$(train_model "$data_file")
+    # Step 3: Train models
+    local model_dir
+    model_dir=$(train_model "$data_file")
 
-    # Step 4: Launch new campaign
+    # Step 4: Detection comparison (non-blocking)
+    compare_detections "$data_file" || log "WARNING: Detection comparison failed, continuing..."
+
+    # Step 5: Launch next campaign
     launch_noise_campaign
 
     log "=============================================="
