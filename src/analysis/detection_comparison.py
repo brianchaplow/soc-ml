@@ -672,6 +672,363 @@ class DetectionComparator:
         return recommendations
 
 
+class MultiModelComparator:
+    """
+    Orchestrates comparison of multiple ML models against Suricata.
+
+    Usage:
+        comparator = MultiModelComparator(ground_truth_df)
+        comparator.add_model_predictions('xgboost', preds, probas)
+        comparator.add_model_predictions('mlp', preds, probas)
+        results = comparator.compare_all()
+    """
+
+    def __init__(self, df: pd.DataFrame):
+        self.df = df.copy()
+        self.model_predictions = {}
+        self.suricata_results = None
+        self.model_results = {}
+
+    def analyze_suricata(self) -> Dict:
+        """Run Suricata analysis."""
+        analyzer = SuricataAnalyzer(self.df)
+        self.suricata_results = analyzer.analyze()
+        return self.suricata_results
+
+    def add_model_predictions(
+        self,
+        model_name: str,
+        predictions: np.ndarray,
+        probabilities: np.ndarray,
+    ):
+        """Add a model's predictions for comparison."""
+        self.model_predictions[model_name] = {
+            'predictions': predictions,
+            'probabilities': probabilities,
+        }
+
+    def compare_all(self, threshold: float = 0.5) -> Dict:
+        """Run full multi-model comparison."""
+        logger.info("=" * 60)
+        logger.info("MULTI-MODEL DETECTION COMPARISON")
+        logger.info("=" * 60)
+
+        # Suricata analysis
+        if self.suricata_results is None:
+            self.analyze_suricata()
+
+        # Per-model analysis
+        y_true = self.df['attack_confirmed'].astype(int).values
+
+        for model_name, pred_data in self.model_predictions.items():
+            logger.info(f"\n--- Analyzing {model_name} ---")
+
+            y_pred = pred_data['predictions']
+            y_proba = pred_data['probabilities']
+
+            # Use existing analysis logic
+            model_df = self.df.copy()
+            model_df['ml_prediction'] = y_pred
+            model_df['ml_probability'] = y_proba
+
+            analyzer = MLModelAnalyzer(model_df)
+            analyzer.df = model_df  # Skip re-predicting
+            self.model_results[model_name] = analyzer.analyze(threshold)
+
+        # Cross-model analysis
+        cross_analyzer = CrossModelAnalyzer(
+            self.df, self.model_predictions, self.suricata_results
+        )
+        cross_results = cross_analyzer.analyze()
+
+        # Per-model vs Suricata comparison
+        per_model_comparisons = {}
+        for model_name in self.model_predictions:
+            model_df = self.df.copy()
+            model_df['ml_prediction'] = self.model_predictions[model_name]['predictions']
+            model_df['ml_probability'] = self.model_predictions[model_name]['probabilities']
+
+            comparator = DetectionComparator(
+                model_df, self.suricata_results, self.model_results[model_name]
+            )
+            per_model_comparisons[model_name] = comparator.compare()
+
+        # Combine results
+        results = {
+            'metadata': {
+                'total_records': len(self.df),
+                'attack_records': int(self.df['attack_confirmed'].sum()),
+                'models_compared': list(self.model_predictions.keys()),
+                'threshold': threshold,
+                'timestamp': datetime.now().isoformat(),
+            },
+            'suricata': self.suricata_results,
+            'models': self.model_results,
+            'per_model_vs_suricata': per_model_comparisons,
+            'cross_model': cross_results,
+            'recommendations': self._generate_recommendations(cross_results),
+        }
+
+        return results
+
+    def _generate_recommendations(self, cross_results: Dict) -> List[str]:
+        """Generate recommendations from cross-model analysis."""
+        recommendations = []
+
+        # Blind spots
+        blind_total = cross_results.get('blind_spots', {}).get('total', 0)
+        if blind_total > 0:
+            recommendations.append(
+                f"CRITICAL: {blind_total} attacks evade ALL models AND Suricata. "
+                "Investigate these blind spots — they represent detection gaps "
+                "that no current approach covers."
+            )
+
+        # Combined vs individual detection
+        rankings = cross_results.get('rankings', {})
+        if isinstance(rankings, dict) and 'by_pr_auc' in rankings:
+            best = rankings['by_pr_auc'][0] if rankings['by_pr_auc'] else None
+            if best:
+                recommendations.append(
+                    f"Best model by PR-AUC: {best['model']} ({best['pr_auc']:.4f}). "
+                    "Consider this as the primary production model."
+                )
+
+        # Unique catches
+        unique = cross_results.get('unique_catches', {})
+        for model_name, catches in unique.items():
+            if catches.get('total', 0) > 5:
+                recommendations.append(
+                    f"{model_name} uniquely detects {catches['total']} attacks "
+                    f"that no other model catches. Consider including in ensemble."
+                )
+
+        # Consensus
+        consensus = cross_results.get('consensus_matrix', {})
+        low_consensus = consensus.get('detected_by_minority', 0)
+        if low_consensus > 0:
+            recommendations.append(
+                f"{low_consensus} attacks detected by only 1-2 models. "
+                "These are borderline cases — review for false positives or "
+                "genuine hard-to-detect patterns."
+            )
+
+        return recommendations
+
+
+class CrossModelAnalyzer:
+    """Analyzes agreement and disagreement across multiple models."""
+
+    def __init__(
+        self,
+        df: pd.DataFrame,
+        model_predictions: Dict,
+        suricata_results: Dict,
+    ):
+        self.df = df
+        self.model_predictions = model_predictions
+        self.suricata_results = suricata_results
+
+    def analyze(self) -> Dict:
+        """Run full cross-model analysis."""
+        return {
+            'consensus_matrix': self._consensus_matrix(),
+            'agreement_heatmap': self._agreement_heatmap(),
+            'category_model_matrix': self._category_model_matrix(),
+            'unique_catches': self._unique_catches(),
+            'blind_spots': self._blind_spots(),
+            'rankings': self._rankings(),
+        }
+
+    def _consensus_matrix(self) -> Dict:
+        """For each attack, count how many models detected it."""
+        gt_attacks = self.df['attack_confirmed'] == True
+        model_names = list(self.model_predictions.keys())
+        n_models = len(model_names)
+
+        if n_models == 0 or gt_attacks.sum() == 0:
+            return {'detected_by_all': 0, 'detected_by_majority': 0,
+                    'detected_by_minority': 0, 'detected_by_none': 0}
+
+        # Build detection matrix (attacks x models)
+        attack_indices = np.where(gt_attacks.values)[0]
+        detection_counts = np.zeros(len(attack_indices), dtype=int)
+
+        # Include Suricata as a detector
+        has_alert = self.df['alert.signature_id'].notna().values if 'alert.signature_id' in self.df.columns else np.zeros(len(self.df), dtype=bool)
+
+        for idx_pos, idx in enumerate(attack_indices):
+            if has_alert[idx]:
+                detection_counts[idx_pos] += 1
+            for model_name in model_names:
+                if self.model_predictions[model_name]['predictions'][idx] == 1:
+                    detection_counts[idx_pos] += 1
+
+        total_detectors = n_models + 1  # models + Suricata
+        majority_threshold = total_detectors // 2 + 1
+
+        return {
+            'total_attacks': int(len(attack_indices)),
+            'total_detectors': total_detectors,
+            'detected_by_all': int((detection_counts == total_detectors).sum()),
+            'detected_by_majority': int((detection_counts >= majority_threshold).sum()),
+            'detected_by_minority': int(((detection_counts > 0) & (detection_counts < majority_threshold)).sum()),
+            'detected_by_none': int((detection_counts == 0).sum()),
+            'distribution': {str(i): int((detection_counts == i).sum()) for i in range(total_detectors + 1)},
+        }
+
+    def _agreement_heatmap(self) -> Dict:
+        """Pairwise agreement rates between all models."""
+        model_names = list(self.model_predictions.keys())
+        heatmap = {}
+
+        for i, name_a in enumerate(model_names):
+            heatmap[name_a] = {}
+            preds_a = self.model_predictions[name_a]['predictions']
+
+            for j, name_b in enumerate(model_names):
+                preds_b = self.model_predictions[name_b]['predictions']
+                agreement = (preds_a == preds_b).mean()
+                heatmap[name_a][name_b] = round(float(agreement), 4)
+
+        return heatmap
+
+    def _category_model_matrix(self) -> Dict:
+        """Detection rate for each attack category across each model."""
+        if 'attack_category' not in self.df.columns:
+            return {}
+
+        gt_attacks = self.df[self.df['attack_confirmed'] == True]
+        categories = gt_attacks['attack_category'].dropna().unique()
+        model_names = list(self.model_predictions.keys())
+
+        matrix = {}
+        for cat in categories:
+            cat_mask = (self.df['attack_confirmed'] == True) & (self.df['attack_category'] == cat)
+            cat_indices = np.where(cat_mask.values)[0]
+            total = len(cat_indices)
+
+            if total == 0:
+                continue
+
+            matrix[cat] = {'total_attacks': total}
+
+            # Suricata
+            has_alert = self.df['alert.signature_id'].notna().values if 'alert.signature_id' in self.df.columns else np.zeros(len(self.df), dtype=bool)
+            sur_detected = sum(1 for idx in cat_indices if has_alert[idx])
+            matrix[cat]['suricata'] = round(sur_detected / total * 100, 2)
+
+            # Each model
+            for model_name in model_names:
+                preds = self.model_predictions[model_name]['predictions']
+                detected = sum(1 for idx in cat_indices if preds[idx] == 1)
+                matrix[cat][model_name] = round(detected / total * 100, 2)
+
+        return matrix
+
+    def _unique_catches(self) -> Dict:
+        """Attacks that only one specific model detects."""
+        gt_attack_mask = self.df['attack_confirmed'].values == True
+        model_names = list(self.model_predictions.keys())
+
+        has_alert = self.df['alert.signature_id'].notna().values if 'alert.signature_id' in self.df.columns else np.zeros(len(self.df), dtype=bool)
+
+        unique = {}
+        attack_indices = np.where(gt_attack_mask)[0]
+
+        for target_model in model_names:
+            unique_indices = []
+            for idx in attack_indices:
+                # Target model detects
+                if self.model_predictions[target_model]['predictions'][idx] != 1:
+                    continue
+
+                # No other model or Suricata detects
+                other_detects = has_alert[idx]
+                for other_model in model_names:
+                    if other_model == target_model:
+                        continue
+                    if self.model_predictions[other_model]['predictions'][idx] == 1:
+                        other_detects = True
+                        break
+
+                if not other_detects:
+                    unique_indices.append(idx)
+
+            by_category = {}
+            if 'attack_category' in self.df.columns and unique_indices:
+                cats = self.df.iloc[unique_indices]['attack_category'].value_counts()
+                by_category = {str(k): int(v) for k, v in cats.items() if pd.notna(k)}
+
+            unique[target_model] = {
+                'total': len(unique_indices),
+                'by_category': by_category,
+            }
+
+        return unique
+
+    def _blind_spots(self) -> Dict:
+        """Attacks that evade ALL models AND Suricata."""
+        gt_attack_mask = self.df['attack_confirmed'].values == True
+        model_names = list(self.model_predictions.keys())
+        attack_indices = np.where(gt_attack_mask)[0]
+
+        has_alert = self.df['alert.signature_id'].notna().values if 'alert.signature_id' in self.df.columns else np.zeros(len(self.df), dtype=bool)
+
+        blind_indices = []
+        for idx in attack_indices:
+            detected = has_alert[idx]
+            if not detected:
+                for model_name in model_names:
+                    if self.model_predictions[model_name]['predictions'][idx] == 1:
+                        detected = True
+                        break
+
+            if not detected:
+                blind_indices.append(idx)
+
+        by_category = {}
+        if 'attack_category' in self.df.columns and blind_indices:
+            cats = self.df.iloc[blind_indices]['attack_category'].value_counts()
+            by_category = {str(k): int(v) for k, v in cats.items() if pd.notna(k)}
+
+        return {
+            'total': len(blind_indices),
+            'by_category': by_category,
+        }
+
+    def _rankings(self) -> Dict:
+        """Rank models by various metrics."""
+        from sklearn.metrics import average_precision_score, recall_score, precision_score, f1_score
+
+        y_true = self.df['attack_confirmed'].astype(int).values
+        model_names = list(self.model_predictions.keys())
+
+        rankings_data = []
+        for model_name in model_names:
+            preds = self.model_predictions[model_name]['predictions']
+            probas = self.model_predictions[model_name]['probabilities']
+
+            try:
+                pr_auc = average_precision_score(y_true, probas)
+            except Exception:
+                pr_auc = 0
+
+            rankings_data.append({
+                'model': model_name,
+                'pr_auc': round(float(pr_auc), 4),
+                'recall': round(float(recall_score(y_true, preds, zero_division=0)), 4),
+                'precision': round(float(precision_score(y_true, preds, zero_division=0)), 4),
+                'f1': round(float(f1_score(y_true, preds, zero_division=0)), 4),
+            })
+
+        return {
+            'by_pr_auc': sorted(rankings_data, key=lambda x: x['pr_auc'], reverse=True),
+            'by_recall': sorted(rankings_data, key=lambda x: x['recall'], reverse=True),
+            'by_f1': sorted(rankings_data, key=lambda x: x['f1'], reverse=True),
+        }
+
+
 def run_comparison(
     data_path: str,
     model_dir: Optional[str] = None,
@@ -786,20 +1143,115 @@ def _print_summary(results: Dict):
         print(f"{i}. {rec}\n")
 
 
+def run_multi_model_comparison(
+    data_path: str,
+    model_dir: str,
+    output_dir: Optional[str] = None,
+    threshold: float = 0.5,
+) -> Dict:
+    """
+    Run multi-model comparison from saved model artifacts.
+
+    Args:
+        data_path: Path to ground-truth labeled parquet
+        model_dir: Parent directory containing all model subdirectories
+        output_dir: Output directory for results
+        threshold: ML prediction threshold
+    """
+    from src.data.features import FeatureEngineer
+
+    logger.info("=" * 60)
+    logger.info("MULTI-MODEL DETECTION COMPARISON")
+    logger.info("=" * 60)
+
+    # Load data
+    df = pd.read_parquet(data_path)
+    logger.info(f"Loaded {len(df):,} records ({df['attack_confirmed'].sum():,} attacks)")
+
+    # Engineer features
+    fe = FeatureEngineer()
+    X, feature_names = fe.fit_transform(df)
+    y = df['attack_confirmed'].astype(int).values
+
+    # Find all model directories
+    model_base = Path(model_dir)
+    model_dirs = sorted(model_base.glob('*_binary_*'))
+
+    if not model_dirs:
+        logger.warning(f"No model directories found in {model_dir}")
+        # Fall back to single-model comparison
+        return run_comparison(data_path, output_dir=output_dir, threshold=threshold)
+
+    # Create comparator
+    comparator = MultiModelComparator(df)
+
+    # Load each model and generate predictions
+    for mdir in model_dirs:
+        model_name = mdir.name.rsplit('_binary_', 1)[0]
+        logger.info(f"Loading {model_name} from {mdir}")
+
+        try:
+            from src.models.train import ModelTrainer
+
+            trainer = ModelTrainer.load_model(str(mdir))
+
+            if trainer.model_type == 'mlp':
+                probas = trainer.model.predict_proba(X)
+                preds = trainer.model.predict(X, threshold=threshold)
+            elif hasattr(trainer.model, 'predict_proba'):
+                prob_output = trainer.model.predict_proba(X)
+                probas = prob_output[:, 1] if prob_output.ndim > 1 else prob_output
+                preds = (probas >= threshold).astype(int)
+            else:
+                preds = trainer.model.predict(X)
+                probas = np.zeros(len(X))
+
+            comparator.add_model_predictions(model_name, preds, probas)
+
+        except Exception as e:
+            logger.warning(f"Failed to load {model_name}: {e}")
+
+    # Run comparison
+    results = comparator.compare_all(threshold)
+    results['metadata']['data_path'] = data_path
+    results['metadata']['model_dir'] = model_dir
+
+    # Save results
+    if output_dir:
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        results_file = output_path / f"detection_comparison_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        with open(results_file, 'w') as f:
+            json.dump(results, f, indent=2, default=str)
+        logger.info(f"Results saved to {results_file}")
+
+    return results
+
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Detection Comparison Analysis")
     parser.add_argument('--data', required=True, help='Path to ground-truth labeled parquet')
-    parser.add_argument('--model', default=None, help='Path to model directory')
+    parser.add_argument('--model', default=None, help='Path to single model directory')
+    parser.add_argument('--model-dir', default=None, help='Parent dir with all model subdirs')
+    parser.add_argument('--all-models', action='store_true', help='Compare all models in --model-dir')
     parser.add_argument('--output', default='results/comparison', help='Output directory')
     parser.add_argument('--threshold', type=float, default=0.5, help='ML threshold')
 
     args = parser.parse_args()
 
-    run_comparison(
-        data_path=args.data,
-        model_dir=args.model,
-        output_dir=args.output,
-        threshold=args.threshold
-    )
+    if args.all_models and args.model_dir:
+        run_multi_model_comparison(
+            data_path=args.data,
+            model_dir=args.model_dir,
+            output_dir=args.output,
+            threshold=args.threshold,
+        )
+    else:
+        run_comparison(
+            data_path=args.data,
+            model_dir=args.model,
+            output_dir=args.output,
+            threshold=args.threshold
+        )
