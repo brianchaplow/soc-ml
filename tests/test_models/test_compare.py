@@ -89,3 +89,53 @@ class TestCompareModels:
         metrics = trainer.evaluate(data['X_test'], data['y_test'])
         assert 'pr_auc' in metrics
         assert metrics['pr_auc'] > 0
+
+    def test_isolation_forest_captured_correctly(self, train_val_test_split):
+        """IsolationForest is stored as self.model after training in compare_models."""
+        from src.models.train import ModelTrainer
+        from sklearn.ensemble import IsolationForest
+
+        data = train_val_test_split
+        trainer = ModelTrainer()
+        comparison = trainer.compare_models(
+            data['X_train'], data['y_train'],
+            data['X_test'], data['y_test'],
+            data['X_val'], data['y_val'],
+        )
+        # After compare_models, best model is restored; check trained_models had IF
+        assert 'Isolation Forest' in comparison['model'].values
+        # IF should have pr_auc > 0 (it was evaluated)
+        if_row = comparison[comparison['model'] == 'Isolation Forest'].iloc[0]
+        assert if_row['pr_auc'] > 0
+
+    def test_isolation_forest_save_load(self, train_val_test_split, tmp_path):
+        """IsolationForest can be saved and loaded correctly."""
+        from src.models.train import ModelTrainer
+        from sklearn.ensemble import IsolationForest
+        import numpy as np
+
+        data = train_val_test_split
+        trainer = ModelTrainer()
+
+        # Train isolation forest directly
+        normal_mask = data['y_train'] == 0
+        trainer.train_anomaly_detector(data['X_train'][normal_mask])
+        trainer.model = trainer.anomaly_model
+        trainer.model_type = 'isolation_forest'
+
+        # Save
+        save_path = str(tmp_path / 'if_test')
+        trainer.save_model(save_path, feature_names=data['feature_names'])
+
+        # Load
+        loaded = ModelTrainer.load_model(save_path)
+        assert loaded.model_type == 'isolation_forest'
+        assert isinstance(loaded.model, IsolationForest)
+        assert hasattr(loaded, 'anomaly_model')
+        assert hasattr(loaded, 'anomaly_scaler')
+
+        # Verify predictions work
+        scores = loaded.anomaly_scores(data['X_test'])
+        assert len(scores) == len(data['y_test'])
+        assert scores.min() >= 0
+        assert scores.max() <= 1
