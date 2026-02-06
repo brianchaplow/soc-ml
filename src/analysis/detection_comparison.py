@@ -1143,6 +1143,86 @@ def _print_summary(results: Dict):
         print(f"{i}. {rec}\n")
 
 
+def compute_shap_values(
+    model_name: str,
+    model,
+    model_type: str,
+    X: np.ndarray,
+    feature_names: List[str],
+    max_samples: int = 1000,
+) -> Optional[Dict]:
+    """Compute SHAP values for a model."""
+    import shap
+
+    logger.info(f"Computing SHAP values for {model_name}...")
+
+    # Sample if large
+    if len(X) > max_samples:
+        idx = np.random.choice(len(X), max_samples, replace=False)
+        X_sample = X[idx]
+    else:
+        X_sample = X
+
+    try:
+        if model_type in ('xgboost', 'lightgbm', 'random_forest'):
+            # TreeExplainer — fast
+            actual_model = model
+            if hasattr(actual_model, 'named_steps'):
+                actual_model = list(actual_model.named_steps.values())[-1]
+            explainer = shap.TreeExplainer(actual_model)
+            shap_values = explainer.shap_values(X_sample)
+
+        elif model_type == 'mlp':
+            # Use KernelExplainer with background sample
+            bg_idx = np.random.choice(len(X), min(100, len(X)), replace=False)
+            background = X[bg_idx]
+
+            def predict_fn(x):
+                return model.predict_proba(x)
+
+            explainer = shap.KernelExplainer(predict_fn, background)
+            shap_values = explainer.shap_values(X_sample[:200])  # Smaller for KernelExplainer
+            X_sample = X_sample[:200]
+
+        elif model_type == 'logistic_regression':
+            actual_model = model
+            if hasattr(model, 'named_steps'):
+                actual_model = model.named_steps.get('lr', model)
+            explainer = shap.LinearExplainer(actual_model, X_sample)
+            shap_values = explainer.shap_values(X_sample)
+
+        elif model_type == 'knn':
+            # KernelExplainer — slow, use small sample
+            bg_idx = np.random.choice(len(X), min(50, len(X)), replace=False)
+            background = X[bg_idx]
+
+            def predict_fn(x):
+                prob = model.predict_proba(x)
+                return prob[:, 1] if prob.ndim > 1 else prob
+
+            explainer = shap.KernelExplainer(predict_fn, background)
+            shap_values = explainer.shap_values(X_sample[:100])
+            X_sample = X_sample[:100]
+
+        else:
+            logger.warning(f"SHAP not supported for model type: {model_type}")
+            return None
+
+        # Handle multi-output SHAP values
+        if isinstance(shap_values, list):
+            shap_values = shap_values[1] if len(shap_values) > 1 else shap_values[0]
+
+        return {
+            'shap_values': shap_values,
+            'feature_names': feature_names,
+            'X_sample': X_sample,
+        }
+
+    except Exception as e:
+        logger.warning(f"SHAP failed for {model_name}: {e}")
+        return None
+
+
 def run_multi_model_comparison(
     data_path: str,
     model_dir: str,
@@ -1216,14 +1296,43 @@ def run_multi_model_comparison(
     results['metadata']['data_path'] = data_path
     results['metadata']['model_dir'] = model_dir
 
-    # Save results
+    # Compute SHAP values for each model
+    shap_data = {}
+    for mdir in model_dirs:
+        model_name = mdir.name.rsplit('_binary_', 1)[0]
+        if model_name not in comparator.model_predictions:
+            continue
+
+        try:
+            from src.models.train import ModelTrainer
+            trainer = ModelTrainer.load_model(str(mdir))
+            shap_result = compute_shap_values(
+                model_name, trainer.model, trainer.model_type,
+                X, feature_names,
+            )
+            if shap_result:
+                shap_data[model_name] = shap_result
+        except Exception as e:
+            logger.warning(f"SHAP skipped for {model_name}: {e}")
+
+    # Generate reports
+    from src.analysis.report_generator import (
+        generate_terminal_report, save_json_report, generate_html_report
+    )
+
+    generate_terminal_report(results)
+
     if output_dir:
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
-        results_file = output_path / f"detection_comparison_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        with open(results_file, 'w') as f:
-            json.dump(results, f, indent=2, default=str)
-        logger.info(f"Results saved to {results_file}")
+
+        # JSON
+        json_file = output_path / f"detection_comparison_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        save_json_report(results, str(json_file))
+
+        # HTML
+        html_file = output_path / f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+        generate_html_report(results, str(html_file), shap_data=shap_data if shap_data else None)
 
     return results
 
