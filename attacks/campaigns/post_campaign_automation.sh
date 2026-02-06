@@ -31,7 +31,8 @@ CONDA_ENV="soc-ml"
 
 log() {
     local msg="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
-    echo "$msg" | tee -a "$LOG_FILE"
+    echo "$msg" >> "$LOG_FILE"
+    echo "$msg" >&2
 }
 
 discord_notify() {
@@ -145,7 +146,7 @@ extract_data() {
         --max-alerts 500000 \
         --max-flows 100000 \
         --output "$output_file" \
-        2>&1 | tee -a "$LOG_FILE"
+        2>&1 | tee -a "$LOG_FILE" >&2
 
     if [[ $? -ne 0 ]]; then
         discord_error "Data extraction failed! Check logs at $LOG_FILE"
@@ -186,7 +187,7 @@ train_model() {
         --task binary \
         --compare \
         --input "$data_file" \
-        2>&1 | tee -a "$LOG_FILE"
+        2>&1 | tee -a "$LOG_FILE" >&2
 
     if [[ $? -ne 0 ]]; then
         discord_error "Model training failed! Check logs at $LOG_FILE"
@@ -248,7 +249,7 @@ compare_detections() {
         --all-models \
         --output results/comparison \
         --threshold 0.5 \
-        2>&1 | tee -a "$LOG_FILE"
+        2>&1 | tee -a "$LOG_FILE" >&2
 
     if [[ $? -ne 0 ]]; then
         discord_error "Detection Comparison" "Comparison failed! Check logs at $LOG_FILE"
