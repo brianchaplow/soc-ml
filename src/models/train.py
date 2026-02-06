@@ -285,6 +285,76 @@ class ModelTrainer:
         logger.info("Logistic Regression training complete")
         return model
 
+    def train_knn(self, X_train: np.ndarray, y_train: np.ndarray):
+        """
+        Train K-Nearest Neighbors classifier.
+
+        Uses StandardScaler pipeline since KNN is distance-based
+        and features have different scales.
+        """
+        from sklearn.neighbors import KNeighborsClassifier
+
+        logger.info("Training KNN...")
+
+        knn_config = self.config.get('knn', {})
+
+        pipeline = Pipeline([
+            ('scaler', StandardScaler()),
+            ('knn', KNeighborsClassifier(
+                n_neighbors=knn_config.get('n_neighbors', 7),
+                algorithm=knn_config.get('algorithm', 'ball_tree'),
+                weights=knn_config.get('weights', 'distance'),
+                metric=knn_config.get('metric', 'minkowski'),
+                n_jobs=knn_config.get('n_jobs', -1),
+            ))
+        ])
+
+        pipeline.fit(X_train, y_train)
+
+        self.model = pipeline
+        self.model_type = 'knn'
+        logger.info("KNN training complete")
+
+    def train_mlp(
+        self,
+        X_train: np.ndarray,
+        y_train: np.ndarray,
+        X_val: Optional[np.ndarray] = None,
+        y_val: Optional[np.ndarray] = None,
+    ):
+        """
+        Train PyTorch MLP neural network.
+
+        Uses GPU (cuda) when available, falls back to CPU.
+        """
+        from src.models.mlp import MLPTrainer
+
+        logger.info("Training MLP...")
+
+        mlp_config = self.config.get('mlp', {})
+
+        trainer = MLPTrainer(
+            n_features=X_train.shape[1],
+            hidden_layers=mlp_config.get('hidden_layers', [256, 128, 64]),
+            dropout=mlp_config.get('dropout', 0.3),
+            batch_norm=mlp_config.get('batch_norm', True),
+            learning_rate=mlp_config.get('learning_rate', 0.001),
+            batch_size=mlp_config.get('batch_size', 256),
+            device=mlp_config.get('device', 'auto'),
+            random_state=mlp_config.get('random_state', 42),
+        )
+
+        trainer.fit(
+            X_train, y_train,
+            X_val, y_val,
+            max_epochs=mlp_config.get('max_epochs', 100),
+            early_stopping_patience=mlp_config.get('early_stopping_patience', 10),
+        )
+
+        self.model = trainer
+        self.model_type = 'mlp'
+        logger.info("MLP training complete")
+
     def compare_models(
         self,
         X_train: np.ndarray,
@@ -293,7 +363,10 @@ class ModelTrainer:
         y_test: np.ndarray,
         X_val: Optional[np.ndarray] = None,
         y_val: Optional[np.ndarray] = None,
-        label_encoder=None
+        label_encoder=None,
+        save_all: bool = False,
+        save_dir: Optional[str] = None,
+        feature_names: Optional[List[str]] = None,
     ) -> pd.DataFrame:
         """
         Train and compare all available models on the same data.
@@ -313,6 +386,9 @@ class ModelTrainer:
             ('LightGBM', 'lightgbm'),
             ('Random Forest', 'random_forest'),
             ('Logistic Regression', 'logistic_regression'),
+            ('KNN', 'knn'),
+            ('MLP', 'mlp'),
+            ('Isolation Forest', 'isolation_forest'),
         ]
 
         for display_name, model_key in model_specs:
@@ -326,9 +402,27 @@ class ModelTrainer:
                     self.train_random_forest(X_train, y_train)
                 elif model_key == 'logistic_regression':
                     self.train_logistic_regression(X_train, y_train)
+                elif model_key == 'knn':
+                    self.train_knn(X_train, y_train)
+                elif model_key == 'mlp':
+                    self.train_mlp(X_train, y_train, X_val, y_val)
+                elif model_key == 'isolation_forest':
+                    # Anomaly detector — train on benign only, evaluate differently
+                    normal_mask = y_train == 0
+                    self.train_anomaly_detector(X_train[normal_mask])
 
                 # Evaluate
-                metrics = self.evaluate(X_test, y_test, label_encoder)
+                if model_key == 'isolation_forest':
+                    # Anomaly scoring — use anomaly_score as probability
+                    anomaly_metrics = self.evaluate_anomaly(X_test, y_test)
+                    metrics = {
+                        'pr_auc': anomaly_metrics.get('pr_auc', 0),
+                        'roc_auc': anomaly_metrics.get('roc_auc', 0),
+                        'accuracy': anomaly_metrics.get('accuracy', 0),
+                        'classification_report': anomaly_metrics.get('classification_report', {}),
+                    }
+                else:
+                    metrics = self.evaluate(X_test, y_test, label_encoder)
 
                 row = {
                     'model': display_name,
@@ -364,16 +458,22 @@ class ModelTrainer:
         logger.info("=" * 60)
         print(comparison.to_string())
 
-        # Restore the best model
-        best_key = comparison.iloc[0]['model']
-        for key, display in model_specs:
-            if key == best_key:
-                best_model_key = display
-                break
-        else:
-            best_model_key = model_specs[0][1]
+        # Save all models if requested
+        if save_all and save_dir:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-        # Map display name back to key
+            for model_key, (model, model_type, model_metrics) in trained_models.items():
+                self.model = model
+                self.model_type = model_type
+                model_dir = os.path.join(save_dir, f'{model_key}_binary_{timestamp}')
+                self.save_model(
+                    model_dir,
+                    feature_names=feature_names or [],
+                    label_encoder=label_encoder,
+                    metrics=model_metrics,
+                )
+
+        # Restore the best model
         name_to_key = {display: key for display, key in model_specs}
         best_key = name_to_key.get(comparison.iloc[0]['model'], 'xgboost')
 
@@ -1150,14 +1250,22 @@ class ModelTrainer:
             threshold = self.threshold
         
         # Get predictions
-        y_prob = self.model.predict_proba(X_test)
-        
-        # Binary case
-        if y_prob.shape[1] == 2:
-            y_prob_pos = y_prob[:, 1]
-            y_pred = (y_prob_pos >= threshold).astype(int)
+        if self.model_type == 'mlp':
+            y_prob_pos = self.model.predict_proba(X_test)
+            y_pred = self.model.predict(X_test, threshold=threshold)
+        elif hasattr(self.model, 'predict_proba'):
+            y_prob = self.model.predict_proba(X_test)
+            if y_prob.ndim > 1 and y_prob.shape[1] == 2:
+                y_prob_pos = y_prob[:, 1]
+            elif y_prob.ndim > 1:
+                y_pred = np.argmax(y_prob, axis=1)
+                y_prob_pos = None
+            else:
+                y_prob_pos = y_prob
+            if y_prob_pos is not None:
+                y_pred = (y_prob_pos >= threshold).astype(int)
         else:
-            y_pred = np.argmax(y_prob, axis=1)
+            y_pred = self.model.predict(X_test)
             y_prob_pos = None
         
         # Basic metrics
@@ -1274,6 +1382,9 @@ class ModelTrainer:
             pkl_path = os.path.join(path, 'model.pkl')
             with open(pkl_path, 'wb') as f:
                 pickle.dump(self.model, f)
+        elif self.model_type == 'mlp':
+            model_path = os.path.join(path, 'model.pt')
+            self.model.save(path)  # MLPTrainer handles its own saving
         else:
             import pickle
             model_path = os.path.join(path, 'model.pkl')
@@ -1363,6 +1474,9 @@ class ModelTrainer:
             model_path = os.path.join(path, 'model.pkl')
             with open(model_path, 'rb') as f:
                 trainer.model = pickle.load(f)
+        elif trainer.model_type == 'mlp':
+            from src.models.mlp import MLPTrainer
+            trainer.model = MLPTrainer.load(path)
         else:
             import pickle
             model_path = os.path.join(path, 'model.pkl')
