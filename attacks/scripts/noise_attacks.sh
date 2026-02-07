@@ -785,22 +785,36 @@ coercer_coerce() {
 
 httpx_probe() {
     local target="${1:-$TARGET_SUBNET}"
-    echo "[NOISE] httpx HTTP probing: $target"
-    echo "$target" | httpx -silent -ports 80,443,8080,8443,3000,8000,8888 \
-        -title -status-code -tech-detect -follow-redirects \
-        -o "$RESULTS/httpx_$(date +%s).txt" 2>&1 || true
+    echo "[NOISE] HTTP probing subnet: $target"
+    local ports=(80 443 8080 8443 3000 8000 8888)
+    local outfile="$RESULTS/httpx_$(date +%s).txt"
+    # Generate IPs from subnet base .1-.254
+    local base="${target%.*}"
+    for ip in $(seq 1 254); do
+        for port in "${ports[@]}"; do
+            curl -sk --connect-timeout 2 -o /dev/null -w "%{http_code} %{url_effective}\n" \
+                "http://${base}.${ip}:${port}/" >> "$outfile" 2>/dev/null &
+        done
+        # Batch in groups of 50
+        if (( ip % 50 == 0 )); then wait; fi
+    done
+    wait
+    echo "[NOISE] HTTP probe complete — results in $outfile"
 }
 
 httpx_targets() {
-    echo "[NOISE] httpx all targets probe"
-    echo "10.10.40.10
-10.10.40.20
-10.10.40.21
-10.10.40.30
-10.10.40.31
-10.10.40.32" | httpx -silent -ports 80,443,8080,8443,3000,8000,8180,8020 \
-        -title -status-code -tech-detect -follow-redirects \
-        -o "$RESULTS/httpx_targets_$(date +%s).txt" 2>&1 || true
+    echo "[NOISE] HTTP probing all targets"
+    local targets=(10.10.40.10 10.10.40.20 10.10.40.21 10.10.40.30 10.10.40.31 10.10.40.32)
+    local ports=(80 443 8080 8443 3000 8000 8180 8020)
+    local outfile="$RESULTS/httpx_targets_$(date +%s).txt"
+    for ip in "${targets[@]}"; do
+        for port in "${ports[@]}"; do
+            curl -sk --connect-timeout 2 -o /dev/null -w "%{http_code} http://${ip}:${port}/\n" \
+                "http://${ip}:${port}/" >> "$outfile" 2>/dev/null &
+        done
+    done
+    wait
+    echo "[NOISE] Target probe complete — results in $outfile"
 }
 
 ldapdomaindump_full() {
