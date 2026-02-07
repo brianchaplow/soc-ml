@@ -278,6 +278,114 @@ list_attacks() {
     echo "  msf_win_ftp         - MS3 Windows FTP login scanner"
     echo "  msf_ad_smb_login    - AD SMB login scanner"
     echo "  msf_ad_psexec       - AD PSExec lateral movement"
+    echo ""
+    echo -e "${YELLOW}Noise Attacks — Scanning:${NC}"
+    echo "  noise_masscan         - Masscan full subnet scan"
+    echo "  noise_nmap_allports   - Nmap all 65535 ports"
+    echo "  noise_nmap_scripts    - Nmap all NSE scripts"
+    echo "  noise_httpx_probe     - httpx HTTP probe subnet"
+    echo "  noise_httpx_targets   - httpx target enumeration"
+    echo "  noise_nuclei_full     - Nuclei full template scan"
+    echo "  noise_nuclei_cves     - Nuclei CVE-only scan"
+    echo ""
+    echo -e "${YELLOW}Noise Attacks — Web:${NC}"
+    echo "  noise_sqlmap_max      - SQLmap maximum intensity"
+    echo "  noise_xss_polyglot    - XSS polyglot payload spray"
+    echo "  noise_cmdi_all        - Command injection all OS variants"
+    echo "  noise_lfi_deep        - LFI deep traversal"
+    echo "  noise_dirb_huge       - Dirb huge wordlist scan"
+    echo "  noise_spring4shell    - Spring4Shell probe"
+    echo "  noise_shellshock      - Shellshock probe"
+    echo "  noise_ffuf_dirs       - ffuf directory fuzzing"
+    echo "  noise_ffuf_params     - ffuf parameter fuzzing"
+    echo "  noise_feroxbuster     - Feroxbuster recursive scan"
+    echo "  noise_dalfox_scan     - Dalfox XSS scan"
+    echo "  noise_dalfox_pipe     - Dalfox piped XSS scan"
+    echo "  noise_commix_scan     - Commix command injection scan"
+    echo ""
+    echo -e "${YELLOW}Noise Attacks — Brute Force:${NC}"
+    echo "  noise_hydra_ssh_max     - Hydra SSH maximum intensity"
+    echo "  noise_hydra_ftp_max     - Hydra FTP maximum intensity"
+    echo "  noise_hydra_telnet_max  - Hydra Telnet maximum intensity"
+    echo "  noise_hydra_mysql_max   - Hydra MySQL maximum intensity"
+    echo "  noise_hydra_rdp_max     - Hydra RDP maximum intensity"
+    echo "  noise_medusa_parallel   - Medusa parallel brute force"
+    echo "  noise_cme_brute         - CrackMapExec SMB brute force"
+    echo "  noise_patator_http      - Patator HTTP brute force"
+    echo ""
+    echo -e "${YELLOW}Noise Attacks — Metasploit:${NC}"
+    echo "  noise_msf_shells        - Metasploit reverse shells"
+    echo "  noise_msf_meterpreter   - Metasploit meterpreter sessions"
+    echo ""
+    echo -e "${YELLOW}Noise Attacks — C2/Exfil:${NC}"
+    echo "  noise_sliver_http       - Sliver HTTP beacon simulation"
+    echo "  noise_beacon_rapid      - Rapid 1s beacon interval"
+    echo "  noise_dnscat2           - DNScat2 tunnel simulation"
+    echo "  noise_iodine            - Iodine DNS tunnel simulation"
+    echo "  noise_ptunnel           - ICMP tunnel simulation"
+    echo "  noise_exfil_large_http  - Large HTTP exfiltration"
+    echo "  noise_exfil_large_dns   - Large DNS exfiltration"
+    echo "  noise_exfil_encoded     - Encoded chunk exfiltration"
+    echo ""
+    echo -e "${YELLOW}Noise Attacks — Network/Impacket:${NC}"
+    echo "  noise_impacket_psexec     - Impacket PSExec"
+    echo "  noise_impacket_wmiexec    - Impacket WMIExec"
+    echo "  noise_impacket_smbexec    - Impacket SMBExec"
+    echo "  noise_impacket_atexec     - Impacket AtExec"
+    echo "  noise_impacket_pth        - Impacket Pass-the-Hash all"
+    echo "  noise_secretsdump         - Impacket secretsdump"
+    echo "  noise_responder_analyze   - Responder analyze mode"
+    echo "  noise_snmp_walk_full      - SNMP full MIB walk"
+    echo "  noise_dns_axfr_all        - DNS AXFR all targets"
+    echo ""
+    echo -e "${YELLOW}Noise Attacks — Active Directory:${NC}"
+    echo "  noise_kerbrute_users      - Kerbrute user enumeration"
+    echo "  noise_kerbrute_passwords  - Kerbrute password spray"
+    echo "  noise_bloodhound_all      - BloodHound all collection methods"
+    echo "  noise_rubeus_kerberoast   - Kerberoasting (Impacket)"
+    echo "  noise_rubeus_asrep        - AS-REP roasting (Impacket)"
+    echo "  noise_cme_spray           - CrackMapExec password spray"
+    echo "  noise_cme_pth             - CrackMapExec Pass-the-Hash"
+    echo "  noise_certipy_find        - Certipy AD CS enumeration"
+    echo "  noise_certipy_esc1        - Certipy ESC1 exploitation"
+    echo "  noise_certipy_shadow      - Certipy shadow credentials"
+    echo "  noise_coercer_scan        - Coercer scan"
+    echo "  noise_coercer_coerce      - Coercer coerce"
+    echo "  noise_ldapdomaindump      - LDAPDomainDump full dump"
+    echo ""
+    echo -e "${YELLOW}Gap Attacks — C2 Simulation:${NC}"
+    echo "  gap_cobalt_beacon       - Cobalt Strike beacon simulation"
+    echo "  gap_cobalt_stager       - Cobalt Strike stager simulation"
+    echo "  gap_meterpreter_https   - Meterpreter HTTPS simulation"
+    echo "  gap_meterpreter_tcp     - Meterpreter reverse TCP simulation"
+    echo "  gap_empire_stager       - Empire stager simulation"
+    echo "  gap_mythic_c2           - Mythic C2 HTTP simulation"
+    echo "  gap_havoc_demon         - Havoc Demon simulation"
+    echo ""
+    echo -e "${YELLOW}Gap Attacks — Encrypted/Protocol:${NC}"
+    echo "  gap_tls_nonstandard     - TLS on non-standard ports"
+    echo "  gap_tls_anomalies       - TLS certificate anomalies"
+    echo "  gap_tls_jitter          - TLS beaconing with jitter"
+    echo "  gap_http2_flood         - HTTP/2 flood"
+    echo "  gap_websocket_abuse     - WebSocket abuse"
+    echo ""
+    echo -e "${YELLOW}Gap Attacks — Cryptomining:${NC}"
+    echo "  gap_stratum_mining      - Stratum mining protocol simulation"
+    echo "  gap_xmrig_pattern       - XMRig traffic pattern simulation"
+    echo "  gap_coinhive_pattern    - CoinHive traffic pattern simulation"
+    echo ""
+    echo -e "${YELLOW}Gap Attacks — Beaconing:${NC}"
+    echo "  gap_beacon_base64       - Base64 beacon exfiltration"
+    echo "  gap_beacon_dns_txt      - DNS TXT beacon"
+    echo "  gap_beacon_icmp         - ICMP covert beacon"
+    echo "  gap_beacon_headers      - HTTP header covert beacon"
+    echo ""
+    echo -e "${YELLOW}Gap Attacks — Anomalous Traffic:${NC}"
+    echo "  gap_large_posts         - Large POST request exfiltration"
+    echo "  gap_high_frequency      - High frequency request flood"
+    echo "  gap_ua_anomalies        - User-Agent anomaly simulation"
+    echo "  gap_exe_downloads       - EXE download pattern simulation"
+    echo "  gap_staged_download     - Staged download simulation"
 }
 
 # Initialize attack log if not exists
@@ -1117,6 +1225,306 @@ case "$ATTACK_TYPE" in
         ;;
     msf_ad_psexec)
         run_msf_attack "ad_psexec.rc" "$AD_WS_IP" "445" "exploit" "ad_psexec" "T1021.002" "$NOTES"
+        ;;
+
+    # =========================================================================
+    # Noise Attacks — Scanning
+    # =========================================================================
+    noise_masscan)
+        run_script_attack "noise_attacks.sh" "masscan_full" "recon" "T1046" "masscan" "$TARGET_SUBNET" "*" "network" "$NOTES"
+        ;;
+    noise_nmap_allports)
+        run_script_attack "noise_attacks.sh" "nmap_allports" "recon" "T1046" "nmap" "$TARGET_SUBNET" "*" "network" "$NOTES"
+        ;;
+    noise_nmap_scripts)
+        run_script_attack "noise_attacks.sh" "nmap_all_scripts" "recon" "T1046" "nmap" "$DVWA_IP" "*" "network" "$NOTES"
+        ;;
+    noise_httpx_probe)
+        run_script_attack "noise_attacks.sh" "httpx_probe" "recon" "T1046" "httpx" "$TARGET_SUBNET" "*" "network" "$NOTES"
+        ;;
+    noise_httpx_targets)
+        run_script_attack "noise_attacks.sh" "httpx_targets" "recon" "T1046" "httpx" "$TARGET_SUBNET" "*" "network" "$NOTES"
+        ;;
+    noise_nuclei_full)
+        run_script_attack "noise_attacks.sh" "nuclei_full_scan" "recon" "T1595" "nuclei" "$DVWA_IP" "*" "network" "$NOTES"
+        ;;
+    noise_nuclei_cves)
+        run_script_attack "noise_attacks.sh" "nuclei_cve_scan" "recon" "T1595" "nuclei" "$DVWA_IP" "*" "network" "$NOTES"
+        ;;
+
+    # =========================================================================
+    # Noise Attacks — Web
+    # =========================================================================
+    noise_sqlmap_max)
+        run_script_attack "noise_attacks.sh" "sqlmap_maximum" "web" "T1190" "sqlmap" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    noise_xss_polyglot)
+        run_script_attack "noise_attacks.sh" "xss_polyglot" "web" "T1189" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    noise_cmdi_all)
+        run_script_attack "noise_attacks.sh" "cmdi_all_os" "web" "T1059" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    noise_lfi_deep)
+        run_script_attack "noise_attacks.sh" "lfi_deep_traversal" "web" "T1083" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    noise_dirb_huge)
+        run_script_attack "noise_attacks.sh" "dirb_huge_wordlist" "web" "T1083" "dirb" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    noise_spring4shell)
+        run_script_attack "noise_attacks.sh" "spring4shell_probe" "web" "T1190" "custom" "$WINDOWS_IP" "80" "http" "$NOTES"
+        ;;
+    noise_shellshock)
+        run_script_attack "noise_attacks.sh" "shellshock_probe" "web" "T1190" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    noise_ffuf_dirs)
+        run_script_attack "noise_attacks.sh" "ffuf_dirs" "web" "T1083" "ffuf" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    noise_ffuf_params)
+        run_script_attack "noise_attacks.sh" "ffuf_params" "web" "T1083" "ffuf" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    noise_feroxbuster)
+        run_script_attack "noise_attacks.sh" "feroxbuster_recursive" "web" "T1083" "feroxbuster" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    noise_dalfox_scan)
+        run_script_attack "noise_attacks.sh" "dalfox_scan" "web" "T1189" "dalfox" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    noise_dalfox_pipe)
+        run_script_attack "noise_attacks.sh" "dalfox_pipe" "web" "T1189" "dalfox" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    noise_commix_scan)
+        run_script_attack "noise_attacks.sh" "commix_scan" "web" "T1059" "commix" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+
+    # =========================================================================
+    # Noise Attacks — Brute Force
+    # =========================================================================
+    noise_hydra_ssh_max)
+        run_script_attack "noise_attacks.sh" "hydra_ssh_maximum" "credential" "T1110" "hydra" "$METASPLOIT_IP" "22" "ssh" "$NOTES"
+        ;;
+    noise_hydra_ftp_max)
+        run_script_attack "noise_attacks.sh" "hydra_ftp_maximum" "credential" "T1110" "hydra" "$METASPLOIT_IP" "21" "ftp" "$NOTES"
+        ;;
+    noise_hydra_telnet_max)
+        run_script_attack "noise_attacks.sh" "hydra_telnet_maximum" "credential" "T1110" "hydra" "$METASPLOIT_IP" "23" "telnet" "$NOTES"
+        ;;
+    noise_hydra_mysql_max)
+        run_script_attack "noise_attacks.sh" "hydra_mysql_maximum" "credential" "T1110" "hydra" "$METASPLOIT_IP" "3306" "mysql" "$NOTES"
+        ;;
+    noise_hydra_rdp_max)
+        run_script_attack "noise_attacks.sh" "hydra_rdp_maximum" "credential" "T1110" "hydra" "$WINDOWS_IP" "3389" "rdp" "$NOTES"
+        ;;
+    noise_medusa_parallel)
+        run_script_attack "noise_attacks.sh" "medusa_parallel_brute" "credential" "T1110" "medusa" "$METASPLOIT_IP" "22" "ssh" "$NOTES"
+        ;;
+    noise_cme_brute)
+        run_script_attack "noise_attacks.sh" "cme_smb_brute" "credential" "T1110" "crackmapexec" "$WINDOWS_IP" "445" "smb" "$NOTES"
+        ;;
+    noise_patator_http)
+        run_script_attack "noise_attacks.sh" "patator_http_brute" "credential" "T1110" "patator" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+
+    # =========================================================================
+    # Noise Attacks — Metasploit
+    # =========================================================================
+    noise_msf_shells)
+        run_script_attack "noise_attacks.sh" "msf_reverse_shells" "exploit" "T1190" "metasploit" "$METASPLOIT_IP" "*" "multi" "$NOTES"
+        ;;
+    noise_msf_meterpreter)
+        run_script_attack "noise_attacks.sh" "msf_meterpreter_sessions" "exploit" "T1190" "metasploit" "$METASPLOIT_IP" "*" "multi" "$NOTES"
+        ;;
+
+    # =========================================================================
+    # Noise Attacks — C2/Exfil
+    # =========================================================================
+    noise_sliver_http)
+        run_script_attack "noise_attacks.sh" "sliver_http_beacon" "c2" "T1071.001" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    noise_beacon_rapid)
+        run_script_attack "noise_attacks.sh" "beacon_rapid_1s" "c2" "T1071.001" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    noise_dnscat2)
+        run_script_attack "noise_attacks.sh" "dnscat2_tunnel" "c2" "T1071.004" "custom" "$AD_DC_IP" "53" "dns" "$NOTES"
+        ;;
+    noise_iodine)
+        run_script_attack "noise_attacks.sh" "iodine_dns_tunnel" "c2" "T1071.004" "custom" "$AD_DC_IP" "53" "dns" "$NOTES"
+        ;;
+    noise_ptunnel)
+        run_script_attack "noise_attacks.sh" "ptunnel_icmp" "exfiltration" "T1048" "custom" "$DVWA_IP" "*" "icmp" "$NOTES"
+        ;;
+    noise_exfil_large_http)
+        run_script_attack "noise_attacks.sh" "exfil_large_http" "exfiltration" "T1048.003" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    noise_exfil_large_dns)
+        run_script_attack "noise_attacks.sh" "exfil_large_dns" "exfiltration" "T1048" "custom" "$AD_DC_IP" "53" "dns" "$NOTES"
+        ;;
+    noise_exfil_encoded)
+        run_script_attack "noise_attacks.sh" "exfil_encoded_chunks" "exfiltration" "T1048" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+
+    # =========================================================================
+    # Noise Attacks — Network/Impacket
+    # =========================================================================
+    noise_impacket_psexec)
+        run_script_attack "noise_attacks.sh" "impacket_psexec" "lateral" "T1021.002" "impacket" "$WINDOWS_IP" "445" "smb" "$NOTES"
+        ;;
+    noise_impacket_wmiexec)
+        run_script_attack "noise_attacks.sh" "impacket_wmiexec" "lateral" "T1021.003" "impacket" "$WINDOWS_IP" "135" "wmi" "$NOTES"
+        ;;
+    noise_impacket_smbexec)
+        run_script_attack "noise_attacks.sh" "impacket_smbexec" "lateral" "T1021.002" "impacket" "$WINDOWS_IP" "445" "smb" "$NOTES"
+        ;;
+    noise_impacket_atexec)
+        run_script_attack "noise_attacks.sh" "impacket_atexec" "lateral" "T1053" "impacket" "$WINDOWS_IP" "445" "smb" "$NOTES"
+        ;;
+    noise_impacket_pth)
+        run_script_attack "noise_attacks.sh" "impacket_pth_all" "lateral" "T1550.002" "impacket" "$WINDOWS_IP" "445" "smb" "$NOTES"
+        ;;
+    noise_secretsdump)
+        run_script_attack "noise_attacks.sh" "impacket_secretsdump" "credential" "T1003.006" "impacket" "$AD_DC_IP" "445" "smb" "$NOTES"
+        ;;
+    noise_responder_analyze)
+        run_script_attack "noise_attacks.sh" "responder_analyze" "recon" "T1040" "responder" "$SOURCE_IP" "*" "network" "$NOTES"
+        ;;
+    noise_snmp_walk_full)
+        run_script_attack "noise_attacks.sh" "snmp_walk_full_mib" "recon" "T1046" "snmpwalk" "$SERVICES_SNMP_IP" "161" "snmp" "$NOTES"
+        ;;
+    noise_dns_axfr_all)
+        run_script_attack "noise_attacks.sh" "dns_axfr_all_targets" "recon" "T1046" "custom" "$AD_DC_IP" "53" "dns" "$NOTES"
+        ;;
+
+    # =========================================================================
+    # Noise Attacks — Active Directory
+    # =========================================================================
+    noise_kerbrute_users)
+        run_script_attack "noise_attacks.sh" "kerbrute_userenum" "credential" "T1087.002" "kerbrute" "$AD_DC_IP" "88" "kerberos" "$NOTES"
+        ;;
+    noise_kerbrute_passwords)
+        run_script_attack "noise_attacks.sh" "kerbrute_passwordspray" "credential" "T1110.003" "kerbrute" "$AD_DC_IP" "88" "kerberos" "$NOTES"
+        ;;
+    noise_bloodhound_all)
+        run_script_attack "noise_attacks.sh" "bloodhound_all_methods" "recon" "T1087.002" "bloodhound-python" "$AD_DC_IP" "389" "ldap" "$NOTES"
+        ;;
+    noise_rubeus_kerberoast)
+        run_script_attack "noise_attacks.sh" "rubeus_kerberoast" "credential" "T1558.003" "impacket" "$AD_DC_IP" "88" "kerberos" "$NOTES"
+        ;;
+    noise_rubeus_asrep)
+        run_script_attack "noise_attacks.sh" "rubeus_asreproast" "credential" "T1558.004" "impacket" "$AD_DC_IP" "88" "kerberos" "$NOTES"
+        ;;
+    noise_cme_spray)
+        run_script_attack "noise_attacks.sh" "cme_password_spray" "credential" "T1110.003" "crackmapexec" "$AD_DC_IP" "445" "smb" "$NOTES"
+        ;;
+    noise_cme_pth)
+        run_script_attack "noise_attacks.sh" "cme_pass_the_hash" "lateral" "T1550.002" "crackmapexec" "$AD_DC_IP" "445" "smb" "$NOTES"
+        ;;
+    noise_certipy_find)
+        run_script_attack "noise_attacks.sh" "certipy_find" "recon" "T1087.002" "certipy" "$AD_DC_IP" "389" "ldap" "$NOTES"
+        ;;
+    noise_certipy_esc1)
+        run_script_attack "noise_attacks.sh" "certipy_esc1" "exploit" "T1649" "certipy" "$AD_DC_IP" "389" "ldap" "$NOTES"
+        ;;
+    noise_certipy_shadow)
+        run_script_attack "noise_attacks.sh" "certipy_shadow" "credential" "T1649" "certipy" "$AD_DC_IP" "389" "ldap" "$NOTES"
+        ;;
+    noise_coercer_scan)
+        run_script_attack "noise_attacks.sh" "coercer_scan" "recon" "T1187" "coercer" "$AD_DC_IP" "445" "smb" "$NOTES"
+        ;;
+    noise_coercer_coerce)
+        run_script_attack "noise_attacks.sh" "coercer_coerce" "lateral" "T1187" "coercer" "$AD_DC_IP" "445" "smb" "$NOTES"
+        ;;
+    noise_ldapdomaindump)
+        run_script_attack "noise_attacks.sh" "ldapdomaindump_full" "recon" "T1087.002" "ldapdomaindump" "$AD_DC_IP" "389" "ldap" "$NOTES"
+        ;;
+
+    # =========================================================================
+    # Gap Attacks — C2 Simulation
+    # =========================================================================
+    gap_cobalt_beacon)
+        run_script_attack "gap_attacks.sh" "cobalt_strike_beacon" "c2" "T1071.001" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    gap_cobalt_stager)
+        run_script_attack "gap_attacks.sh" "cobalt_strike_stager" "c2" "T1105" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    gap_meterpreter_https)
+        run_script_attack "gap_attacks.sh" "meterpreter_https" "c2" "T1071.001" "custom" "$METASPLOIT_IP" "443" "https" "$NOTES"
+        ;;
+    gap_meterpreter_tcp)
+        run_script_attack "gap_attacks.sh" "meterpreter_reverse_tcp" "c2" "T1095" "custom" "$METASPLOIT_IP" "4444" "tcp" "$NOTES"
+        ;;
+    gap_empire_stager)
+        run_script_attack "gap_attacks.sh" "empire_stager" "c2" "T1071.001" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    gap_mythic_c2)
+        run_script_attack "gap_attacks.sh" "mythic_c2_http" "c2" "T1071.001" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    gap_havoc_demon)
+        run_script_attack "gap_attacks.sh" "havoc_demon" "c2" "T1071.001" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+
+    # =========================================================================
+    # Gap Attacks — Encrypted/Protocol
+    # =========================================================================
+    gap_tls_nonstandard)
+        run_script_attack "gap_attacks.sh" "tls_nonstandard_ports" "evasion" "T1573" "openssl" "$WINDOWS_IP" "443" "tls" "$NOTES"
+        ;;
+    gap_tls_anomalies)
+        run_script_attack "gap_attacks.sh" "tls_cert_anomalies" "evasion" "T1573" "openssl" "$WINDOWS_IP" "443" "tls" "$NOTES"
+        ;;
+    gap_tls_jitter)
+        run_script_attack "gap_attacks.sh" "tls_beaconing_jitter" "c2" "T1573" "custom" "$DVWA_IP" "443" "tls" "$NOTES"
+        ;;
+    gap_http2_flood)
+        run_script_attack "gap_attacks.sh" "http2_flood" "evasion" "T1498" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    gap_websocket_abuse)
+        run_script_attack "gap_attacks.sh" "websocket_abuse" "web" "T1190" "custom" "$CRAPI_IP" "80" "http" "$NOTES"
+        ;;
+
+    # =========================================================================
+    # Gap Attacks — Cryptomining
+    # =========================================================================
+    gap_stratum_mining)
+        run_script_attack "gap_attacks.sh" "stratum_mining" "c2" "T1496" "custom" "$DVWA_IP" "3333" "stratum" "$NOTES"
+        ;;
+    gap_xmrig_pattern)
+        run_script_attack "gap_attacks.sh" "xmrig_pattern" "c2" "T1496" "custom" "$DVWA_IP" "3333" "stratum" "$NOTES"
+        ;;
+    gap_coinhive_pattern)
+        run_script_attack "gap_attacks.sh" "coinhive_pattern" "c2" "T1496" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+
+    # =========================================================================
+    # Gap Attacks — Beaconing
+    # =========================================================================
+    gap_beacon_base64)
+        run_script_attack "gap_attacks.sh" "beacon_base64_exfil" "exfiltration" "T1132.001" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    gap_beacon_dns_txt)
+        run_script_attack "gap_attacks.sh" "beacon_dns_txt" "c2" "T1071.004" "custom" "$AD_DC_IP" "53" "dns" "$NOTES"
+        ;;
+    gap_beacon_icmp)
+        run_script_attack "gap_attacks.sh" "beacon_icmp_covert" "exfiltration" "T1095" "custom" "$DVWA_IP" "*" "icmp" "$NOTES"
+        ;;
+    gap_beacon_headers)
+        run_script_attack "gap_attacks.sh" "beacon_header_covert" "c2" "T1071.001" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+
+    # =========================================================================
+    # Gap Attacks — Anomalous Traffic
+    # =========================================================================
+    gap_large_posts)
+        run_script_attack "gap_attacks.sh" "large_post_requests" "exfiltration" "T1048.003" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    gap_high_frequency)
+        run_script_attack "gap_attacks.sh" "high_frequency_requests" "evasion" "T1498" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    gap_ua_anomalies)
+        run_script_attack "gap_attacks.sh" "user_agent_anomalies" "recon" "T1592" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    gap_exe_downloads)
+        run_script_attack "gap_attacks.sh" "exe_download_pattern" "c2" "T1105" "custom" "$DVWA_IP" "80" "http" "$NOTES"
+        ;;
+    gap_staged_download)
+        run_script_attack "gap_attacks.sh" "staged_download" "c2" "T1105" "custom" "$DVWA_IP" "80" "http" "$NOTES"
         ;;
 
     "")
