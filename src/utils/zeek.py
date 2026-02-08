@@ -4,7 +4,7 @@ SOC-ML Zeek Enrichment Utility
 Correlates Zeek conn.log records with Suricata alerts/flows
 via 5-tuple + timestamp matching.
 
-Author: Brian Chaplow (Chappy McNasty)
+Author: Brian Chaplow
 """
 
 import logging

@@ -3,7 +3,7 @@ SOC-ML Model Training Module
 ============================
 Trains and evaluates threat detection models.
 
-Author: Brian Chaplow (Chappy McNasty)
+Author: Brian Chaplow
 """
 
 import os

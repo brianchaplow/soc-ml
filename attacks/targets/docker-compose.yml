@@ -7,7 +7,7 @@
 #   docker compose up -d
 #   docker compose ps      # verify all healthy
 #
-# Author: Brian Chaplow (Chappy McNasty)
+# Author: Brian Chaplow
 # =============================================================================
 
 networks:

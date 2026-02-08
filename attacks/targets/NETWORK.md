@@ -1,6 +1,6 @@
 # HomeLab SOC v2 — Network Reference
 
-**Author:** Brian Chaplow (Chappy McNasty)
+**Author:** Brian Chaplow
 **Updated:** 2026-01-31
 
 ---

@@ -4,7 +4,7 @@ SOC-ML Feature Engineering Module v2
 Transforms raw data into ML-ready features.
 **FIXED: Removed data leakage from severity and signature_id**
 
-Author: Brian Chaplow (Chappy McNasty)
+Author: Brian Chaplow
 Version: 2.0 - Leakage-free
 """
 

@@ -6,7 +6,7 @@
 
 Machine learning threat detection for the HomeLab SOC v2 infrastructure.
 
-**Author:** Brian Chaplow (Chappy McNasty)  
+**Author:** Brian Chaplow  
 **Environment:** sear (Kali Linux) on VLAN 20
 
 ---

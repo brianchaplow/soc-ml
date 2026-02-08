@@ -4,7 +4,7 @@
 
 Structured attack generation for SOC-ML training data. All attacks are logged with precise timestamps enabling ground-truth labeling for ML training.
 
-**Author:** Brian Chaplow (Chappy McNasty)  
+**Author:** Brian Chaplow  
 **Environment:** sear (Kali) → Target VLAN 40
 
 ---

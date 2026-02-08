@@ -3,7 +3,7 @@ SOC-ML Feature Engineering Module
 =================================
 Transforms raw data into ML-ready features.
 
-Author: Brian Chaplow (Chappy McNasty)
+Author: Brian Chaplow
 """
 
 import os

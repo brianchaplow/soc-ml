@@ -4,7 +4,7 @@ SOC-ML Data Extraction with Attack Correlation
 Extracts Suricata alerts and correlates with logged attacks
 for ground-truth ML labeling.
 
-Author: Brian Chaplow (Chappy McNasty)
+Author: Brian Chaplow
 """
 
 import os

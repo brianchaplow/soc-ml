@@ -3,7 +3,7 @@ SOC-ML Data Extraction Module
 =============================
 Extracts and samples data from OpenSearch for ML training.
 
-Author: Brian Chaplow (Chappy McNasty)
+Author: Brian Chaplow
 """
 
 import os

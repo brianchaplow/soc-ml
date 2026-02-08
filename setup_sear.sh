@@ -1,7 +1,7 @@
 #!/bin/bash
 # =============================================================================
 # SOC-ML Project Setup Script for sear (Kali Linux)
-# Author: Brian Chaplow (Chappy McNasty)
+# Author: Brian Chaplow
 # Purpose: Initialize ML environment for HomeLab SOC threat detection
 # =============================================================================
 

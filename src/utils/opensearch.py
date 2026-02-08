@@ -3,7 +3,7 @@ SOC-ML OpenSearch Client Utility
 ================================
 Handles all interactions with OpenSearch for data extraction.
 
-Author: Brian Chaplow (Chappy McNasty)
+Author: Brian Chaplow
 """
 
 import os
