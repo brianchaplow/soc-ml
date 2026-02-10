@@ -292,14 +292,21 @@ while true; do
     echo -e "${CYAN}[Hour ${CURRENT_HOUR}] Phase: ${PHASE_NAME} | Intensity: ${INTENSITY} (${APH}/hr) | Attack #$((TOTAL + 1))${NC}"
     echo -e "${GREEN}Executing: ${ATTACK_TYPE}${NC}"
 
-    if bash "$RUN_ATTACK" --auto-confirm --campaign-id "$CAMPAIGN_ID" "$ATTACK_TYPE" "Campaign: ${CAMPAIGN_NAME} | Phase: ${PHASE_NAME}"; then
+    # Per-attack timeout (45 min default) — prevents any single tool from stalling the campaign
+    ATTACK_TIMEOUT="${ATTACK_TIMEOUT:-2700}"
+    if timeout "$ATTACK_TIMEOUT" bash "$RUN_ATTACK" --auto-confirm --campaign-id "$CAMPAIGN_ID" "$ATTACK_TYPE" "Campaign: ${CAMPAIGN_NAME} | Phase: ${PHASE_NAME}"; then
         state_increment "$STATE_FILE" "attacks_completed"
         state_log_attack "$STATE_FILE" "$ATTACK_TYPE" "" "true" "$PHASE_NAME"
         echo -e "${GREEN}Attack completed successfully${NC}"
     else
+        EXIT_CODE=$?
+        if [[ "$EXIT_CODE" -eq 124 ]]; then
+            echo -e "${YELLOW}Attack timed out after ${ATTACK_TIMEOUT}s (continuing)${NC}"
+        else
+            echo -e "${RED}Attack failed (continuing)${NC}"
+        fi
         state_increment "$STATE_FILE" "attacks_failed"
         state_log_attack "$STATE_FILE" "$ATTACK_TYPE" "" "false" "$PHASE_NAME"
-        echo -e "${RED}Attack failed (continuing)${NC}"
     fi
 
     # Calculate delay

