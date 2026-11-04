@@ -89,6 +89,17 @@ class FeatureEngineer:
             }
         }
     
+    @staticmethod
+    def _num_series(df: pd.DataFrame, col: str) -> pd.Series:
+        """Return a numeric Series for `col`, defaulting to 0 when absent.
+
+        ``df.get(col, 0)`` yields a scalar when the column is missing, which
+        breaks the downstream ``.fillna(0)``. Returning a Series aligned to
+        ``df.index`` keeps ``transform`` robust to records that lack a column.
+        """
+        series = df[col] if col in df.columns else pd.Series(0, index=df.index)
+        return pd.to_numeric(series, errors='coerce').fillna(0)
+
     def _extract_network_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Extract network-level features (ports, protocol stats).
@@ -98,8 +109,8 @@ class FeatureEngineer:
         features = pd.DataFrame(index=df.index)
         
         # Port features
-        features['src_port'] = pd.to_numeric(df.get('src_port', 0), errors='coerce').fillna(0)
-        features['dest_port'] = pd.to_numeric(df.get('dest_port', 0), errors='coerce').fillna(0)
+        features['src_port'] = self._num_series(df, 'src_port')
+        features['dest_port'] = self._num_series(df, 'dest_port')
         
         # NOTE: We intentionally DO NOT include:
         # - severity (leakage: directly encodes attack priority)
@@ -120,18 +131,10 @@ class FeatureEngineer:
         features = pd.DataFrame(index=df.index)
         
         # Raw flow stats
-        features['bytes_toserver'] = pd.to_numeric(
-            df.get('flow.bytes_toserver', 0), errors='coerce'
-        ).fillna(0)
-        features['bytes_toclient'] = pd.to_numeric(
-            df.get('flow.bytes_toclient', 0), errors='coerce'
-        ).fillna(0)
-        features['pkts_toserver'] = pd.to_numeric(
-            df.get('flow.pkts_toserver', 0), errors='coerce'
-        ).fillna(0)
-        features['pkts_toclient'] = pd.to_numeric(
-            df.get('flow.pkts_toclient', 0), errors='coerce'
-        ).fillna(0)
+        features['bytes_toserver'] = self._num_series(df, 'flow.bytes_toserver')
+        features['bytes_toclient'] = self._num_series(df, 'flow.bytes_toclient')
+        features['pkts_toserver'] = self._num_series(df, 'flow.pkts_toserver')
+        features['pkts_toclient'] = self._num_series(df, 'flow.pkts_toclient')
         
         return features
     
@@ -321,7 +324,7 @@ class FeatureEngineer:
 
         timestamp_col = df.get('@timestamp', df.get('timestamp', None))
         dest_ip = df.get('dest_ip', pd.Series(['0.0.0.0'] * len(df), index=df.index)).fillna('0.0.0.0')
-        dest_port = pd.to_numeric(df.get('dest_port', 0), errors='coerce').fillna(0).astype(int)
+        dest_port = self._num_series(df, 'dest_port').astype(int)
         src_ip = df.get('src_ip', pd.Series(['0.0.0.0'] * len(df), index=df.index)).fillna('0.0.0.0')
 
         if timestamp_col is not None and len(df) > 0:
@@ -432,7 +435,7 @@ class FeatureEngineer:
         features['zeek_service_known'] = ((service != '') & (service != '-') & (service != 'nan')).astype(int)
 
         # Port-service mismatch detection
-        dest_port = pd.to_numeric(df.get('dest_port', 0), errors='coerce').fillna(0).astype(int)
+        dest_port = self._num_series(df, 'dest_port').astype(int)
         port_to_service = {
             80: 'http', 8080: 'http', 8000: 'http', 3000: 'http',
             443: 'ssl', 8443: 'ssl',
@@ -453,11 +456,11 @@ class FeatureEngineer:
 
         # --- Byte overhead (4 features) ---
         if has_zeek:
-            orig_bytes = pd.to_numeric(df.get('zeek_orig_bytes', 0), errors='coerce').fillna(0)
-            resp_bytes = pd.to_numeric(df.get('zeek_resp_bytes', 0), errors='coerce').fillna(0)
-            orig_ip_bytes = pd.to_numeric(df.get('zeek_orig_ip_bytes', 0), errors='coerce').fillna(0)
-            resp_ip_bytes = pd.to_numeric(df.get('zeek_resp_ip_bytes', 0), errors='coerce').fillna(0)
-            missed = pd.to_numeric(df.get('zeek_missed_bytes', 0), errors='coerce').fillna(0)
+            orig_bytes = self._num_series(df, 'zeek_orig_bytes')
+            resp_bytes = self._num_series(df, 'zeek_resp_bytes')
+            orig_ip_bytes = self._num_series(df, 'zeek_orig_ip_bytes')
+            resp_ip_bytes = self._num_series(df, 'zeek_resp_ip_bytes')
+            missed = self._num_series(df, 'zeek_missed_bytes')
         else:
             orig_bytes = pd.Series(0, index=df.index)
             resp_bytes = pd.Series(0, index=df.index)
@@ -478,7 +481,7 @@ class FeatureEngineer:
         """
         features = pd.DataFrame(index=df.index)
 
-        dest_port = pd.to_numeric(df.get('dest_port', 0), errors='coerce').fillna(0).astype(int)
+        dest_port = self._num_series(df, 'dest_port').astype(int)
 
         features['is_smb_traffic'] = dest_port.isin([445, 139]).astype(int)
         features['is_dns_traffic'] = (dest_port == 53).astype(int)
