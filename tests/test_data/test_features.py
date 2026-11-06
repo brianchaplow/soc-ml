@@ -1,6 +1,6 @@
 """Tests for FeatureEngineer (src/data/features.py).
 
-Uses tiny synthetic DataFrames only — no OpenSearch, no disk I/O.
+Uses tiny synthetic DataFrames only, with no OpenSearch or disk I/O.
 Focus: the fit/transform contract and the leakage guards the pipeline
 depends on (scaler/encoders fit on train only, no label-leaking features).
 """
